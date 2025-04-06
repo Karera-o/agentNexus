@@ -64,9 +64,54 @@ export const ModelProvider = ({ children }) => {
           // For cloud providers, use the predefined models from settings
           statusObj[provider] = { checked: true, running: hasApiKey };
 
-          // For cloud providers with API keys, fetch models
-          if (hasApiKey) {
-            // For other cloud providers with API keys, use the predefined models
+          // Special handling for OpenRouter - always try to fetch models from API
+          if (provider === 'openrouter') {
+            try {
+              console.log('ModelContext: Fetching OpenRouter models');
+              console.log(`ModelContext: OpenRouter API Key in settings: ${settings.providers.openrouter.apiKey ? 'Present (length: ' + settings.providers.openrouter.apiKey.length + ')' : 'Not set'}`);
+              console.log(`ModelContext: OpenRouter API Key in env: ${process.env.NEXT_PUBLIC_OPENROUTER_API_KEY ? 'Present (length: ' + process.env.NEXT_PUBLIC_OPENROUTER_API_KEY.length + ')' : 'Not set'}`);
+
+              // First check if we already have models in settings
+              if (settings.providers.openrouter.models && settings.providers.openrouter.models.length > 0) {
+                console.log(`ModelContext: Using ${settings.providers.openrouter.models.length} models from settings`);
+                modelsObj[provider] = settings.providers.openrouter.models.map(model => ({
+                  name: model.id,
+                  displayName: model.name,
+                  description: model.description || ''
+                }));
+                statusObj[provider] = { checked: true, running: true };
+              } else {
+                // If no models in settings, fetch from API
+                const openRouterProvider = createProvider(provider, settings);
+                console.log(`ModelContext: OpenRouter provider created with API Key: ${openRouterProvider.apiKey ? 'Present (length: ' + openRouterProvider.apiKey.length + ')' : 'Not set'}`);
+
+                const models = await openRouterProvider.listModels();
+
+                console.log(`ModelContext: Fetched ${models.length} OpenRouter models`);
+                statusObj[provider] = { checked: true, running: models.length > 0 };
+                modelsObj[provider] = models;
+
+                // If we got models, update the settings
+                if (models.length > 0) {
+                  const settingsModels = models.map(model => ({
+                    id: model.name,
+                    name: model.displayName || model.name,
+                    description: model.description || ''
+                  }));
+
+                  // Update the models in settings
+                  settings.providers.openrouter.models = settingsModels;
+                  localStorage.setItem('settings', JSON.stringify(settings));
+                }
+              }
+            } catch (error) {
+              console.error('Error fetching OpenRouter models:', error);
+              statusObj[provider] = { checked: true, running: false };
+              modelsObj[provider] = [];
+            }
+          }
+          // For other cloud providers with API keys, use the predefined models
+          else if (hasApiKey) {
             modelsObj[provider] = providerSettings.models.map(model => ({
               name: model.id,
               displayName: model.name,

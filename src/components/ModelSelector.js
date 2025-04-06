@@ -151,8 +151,31 @@ const ModelSelector = ({ selectedModel, onModelSelect, agentColor }) => {
     let providerModels = [];
 
     try {
-      // For cloud providers, use the predefined models from settings
-      if (!settings.providers[provider]?.local && settings.providers[provider]?.models?.length > 0) {
+      // Special case for OpenRouter - always use the fetched models
+      if (provider === 'openrouter') {
+        console.log('ModelSelector: Getting OpenRouter models from availableModels:', availableModels[provider]);
+        providerModels = availableModels[provider] || [];
+        console.log(`ModelSelector: Found ${providerModels.length} OpenRouter models`);
+
+        // If we have no models, check if we need to refresh
+        if (providerModels.length === 0 && settings.providers[provider]?.apiKey) {
+          console.log('ModelSelector: No OpenRouter models found, but API key is set. Consider refreshing models.');
+
+          // Check if we have models in settings
+          if (settings.providers[provider]?.models?.length > 0) {
+            console.log(`ModelSelector: Found ${settings.providers[provider].models.length} models in settings`);
+            // Use models from settings
+            providerModels = settings.providers[provider].models.map(model => ({
+              name: model.id,
+              displayName: model.name,
+              description: model.description || ''
+            }));
+          }
+          // We'll show a message to the user to refresh models if no models are found
+        }
+      }
+      // For other cloud providers, use the predefined models from settings
+      else if (!settings.providers[provider]?.local && settings.providers[provider]?.models?.length > 0) {
         providerModels = settings.providers[provider].models.map(model => ({
           name: model.id,
           displayName: model.name,
@@ -162,6 +185,8 @@ const ModelSelector = ({ selectedModel, onModelSelect, agentColor }) => {
         // For local providers like Ollama, use the fetched models
         providerModels = availableModels[provider] || [];
       }
+
+      console.log(`ModelSelector: Found ${providerModels.length} models for provider ${provider}`);
     } catch (error) {
       console.error(`Error getting models for provider ${provider}:`, error);
       // Return empty array in case of error
@@ -308,7 +333,25 @@ const ModelSelector = ({ selectedModel, onModelSelect, agentColor }) => {
                 // Model selection step
                 !filteredModels[selectedProvider] || filteredModels[selectedProvider].length === 0 ? (
                   <div className="text-center text-gray-500 dark:text-gray-400 py-4">
-                    {searchTerm ? 'No models match your search' : 'No models available'}
+                    {searchTerm ? 'No models match your search' : (
+                      selectedProvider === 'openrouter' ? (
+                        <div>
+                          <p className="mb-2">No OpenRouter models found.</p>
+                          <p className="mb-2 text-xs">API Key: {settings.providers.openrouter?.apiKey ? 'Present' : 'Not set'}</p>
+                          <p className="mb-2 text-xs">Env Key: {process.env.NEXT_PUBLIC_OPENROUTER_API_KEY ? 'Present' : 'Not set'}</p>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              console.log('Manually refreshing OpenRouter models...');
+                              refreshAllModels();
+                            }}
+                            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm inline-flex items-center"
+                          >
+                            <FaSpinner className="mr-2 animate-spin" /> Fetch OpenRouter Models
+                          </button>
+                        </div>
+                      ) : 'No models available'
+                    )}
                   </div>
                 ) : (
                   <div className="space-y-1">
@@ -328,7 +371,7 @@ const ModelSelector = ({ selectedModel, onModelSelect, agentColor }) => {
                       <button
                         key={`${selectedProvider}-${model.name}`}
                         onClick={() => handleModelSelect(selectedProvider, model.name)}
-                        className={`w-full text-left px-3 py-2 rounded-md text-sm flex items-center justify-between mb-1 ${
+                        className={`w-full text-left px-3 ${selectedProvider === 'openrouter' ? 'py-1.5' : 'py-2'} rounded-md text-sm flex items-center justify-between mb-1 ${
                           selectedModel?.provider === selectedProvider && selectedModel?.model === model.name
                             ? `bg-gradient-to-r ${agentColor} text-white`
                             : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200'
@@ -336,13 +379,35 @@ const ModelSelector = ({ selectedModel, onModelSelect, agentColor }) => {
                       >
                         <div className="flex flex-col">
                           <div className="flex items-center">
-                            <FaRobot className="mr-2" />
-                            <span className="font-medium">{model.displayName || model.name}</span>
+                            {selectedProvider === 'openrouter' ? (
+                              <div className="flex flex-col">
+                                <span className="font-medium">{model.displayName || model.name}</span>
+                                <span className="text-xs text-gray-500 dark:text-gray-400">{model.name.split('/')[0]}/{model.name.split('/')[1]}</span>
+                                {(model.is_free || model.name.includes('free')) && (
+                                  <span className="text-xs text-green-500 dark:text-green-400 font-semibold">Free</span>
+                                )}
+                                {!model.is_free && model.pricing && (
+                                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                                    ${model.pricing.prompt.toFixed(6)}/1M prompt, ${model.pricing.completion.toFixed(6)}/1M completion
+                                  </span>
+                                )}
+                              </div>
+                            ) : (
+                              <>
+                                <FaRobot className="mr-2" />
+                                <span className="font-medium">{model.displayName || model.name}</span>
+                              </>
+                            )}
                           </div>
-                          {model.description && (
+                          {model.description && selectedProvider !== 'openrouter' && (
                             <span className="text-xs text-gray-500 dark:text-gray-400 ml-6 mt-1">{model.description}</span>
                           )}
                         </div>
+                        {selectedProvider === 'openrouter' && model.top_provider && (
+                          <span className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 px-2 py-0.5 rounded-full">
+                            {model.top_provider}
+                          </span>
+                        )}
                         {model.size && (
                           <span className="text-xs opacity-80 ml-2">{formatSize(model.size)}</span>
                         )}

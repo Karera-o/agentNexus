@@ -1,0 +1,199 @@
+/* Markdown Renderer Styles */
+
+.markdown-renderer {
+  /* Base styles */
+  font-size: 14px;
+  line-height: 1.6;
+  color: inherit;
+  overflow-wrap: break-word;
+}
+
+/* Headings */
+.markdown-renderer h1 {
+  font-size: 16px;
+  font-weight: 700;
+  margin-top: 1.25rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid rgba(128, 128, 128, 0.2);
+}
+
+.markdown-renderer h2 {
+  font-size: 14px;
+  font-weight: 700;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.markdown-renderer h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin-top: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.markdown-renderer h4 {
+  font-size: 14px;
+  font-weight: 600;
+  margin-top: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.markdown-renderer h5, .markdown-renderer h6 {
+  font-size: 14px;
+  font-weight: 600;
+  margin-top: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+/* Lists */
+.markdown-renderer ul, .markdown-renderer ol {
+  margin-top: 0.25rem;
+  margin-bottom: 0.25rem;
+  padding-left: 1.5rem;
+  font-size: 14px;
+}
+
+.markdown-renderer ul {
+  list-style-type: disc;
+}
+
+.markdown-renderer ol {
+  list-style-type: decimal;
+}
+
+.markdown-renderer li {
+  margin-bottom: 0.15rem;
+  font-size: 14px;
+}
+
+.markdown-renderer li > ul, .markdown-renderer li > ol {
+  margin-top: 0.15rem;
+  margin-bottom: 0.15rem;
+}
+
+/* Nested lists */
+.markdown-renderer ul ul, .markdown-renderer ol ul {
+  list-style-type: circle;
+}
+
+.markdown-renderer ul ul ul, .markdown-renderer ol ul ul {
+  list-style-type: square;
+}
+
+/* Code blocks */
+.markdown-renderer pre {
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+  padding: 0.5rem;
+  border-radius: 0.375rem;
+  background-color: rgba(0, 0, 0, 0.05);
+  overflow-x: auto;
+}
+
+.dark .markdown-renderer pre {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.markdown-renderer code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 13px;
+  padding: 0.2em 0.4em;
+  border-radius: 0.25rem;
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.dark .markdown-renderer code {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.markdown-renderer pre code {
+  padding: 0;
+  background-color: transparent;
+}
+
+/* Blockquotes */
+.markdown-renderer blockquote {
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+  padding-left: 1rem;
+  border-left: 3px solid rgba(128, 128, 128, 0.2);
+  color: rgba(107, 114, 128, 1);
+  font-size: 14px;
+}
+
+.dark .markdown-renderer blockquote {
+  border-left-color: rgba(156, 163, 175, 0.4);
+  color: rgba(209, 213, 219, 1);
+}
+
+/* Tables */
+.markdown-renderer table {
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.markdown-renderer th, .markdown-renderer td {
+  padding: 0.4rem 0.6rem;
+  border: 1px solid rgba(128, 128, 128, 0.2);
+  font-size: 14px;
+}
+
+.dark .markdown-renderer th, .dark .markdown-renderer td {
+  border-color: rgba(156, 163, 175, 0.4);
+}
+
+.markdown-renderer th {
+  background-color: rgba(0, 0, 0, 0.05);
+  font-weight: 600;
+}
+
+.dark .markdown-renderer th {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Links */
+.markdown-renderer a {
+  color: #3b82f6;
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.markdown-renderer a:hover {
+  text-decoration: underline;
+}
+
+.dark .markdown-renderer a {
+  color: #60a5fa;
+}
+
+/* Images */
+.markdown-renderer img {
+  max-width: 100%;
+  height: auto;
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+  border-radius: 0.375rem;
+}
+
+/* Horizontal rule */
+.markdown-renderer hr {
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+  border: 0;
+  border-top: 1px solid rgba(128, 128, 128, 0.2);
+}
+
+.dark .markdown-renderer hr {
+  border-top-color: rgba(156, 163, 175, 0.4);
+}
+
+/* Paragraphs */
+.markdown-renderer p {
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+  font-size: 14px;
+}

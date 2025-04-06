@@ -1,14 +1,73 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { FaCog, FaTimes, FaCheck, FaExclamationTriangle, FaRobot, FaServer, FaKey, FaGlobe, FaToggleOn, FaToggleOff, FaInfoCircle } from 'react-icons/fa';
+import { FaCog, FaTimes, FaCheck, FaExclamationTriangle, FaRobot, FaServer, FaKey, FaGlobe, FaToggleOn, FaToggleOff, FaInfoCircle, FaSave, FaCopy } from 'react-icons/fa';
 import { useSettings } from '../context/SettingsContext';
+import { extractApiKeys, saveApiKeysToStorage, generateApiKeyInstructions } from '../utils/storageManager';
+import { saveApiKeysToEnv } from '../utils/envManager';
+import EnvDebugger from './EnvDebugger';
+import OpenRouterDebugger from './OpenRouterDebugger';
 
 const SettingsModal = () => {
   const { settings, updateSetting, updateProviderSetting, resetSettings, isSettingsOpen, setIsSettingsOpen, fetchModelsForProvider, fetchAllModels } = useSettings();
   const [activeTab, setActiveTab] = useState('general');
   const [providerStatus, setProviderStatus] = useState({});
   const [testingConnection, setTestingConnection] = useState(false);
+  const [saveApiKeysMessage, setSaveApiKeysMessage] = useState('');
+  const [showApiKeyInstructions, setShowApiKeyInstructions] = useState(false);
+
+  // Handle saving API keys to localStorage
+  const handleSaveApiKeys = () => {
+    // Extract API keys from settings
+    const apiKeys = extractApiKeys(settings);
+
+    // Save API keys to localStorage
+    saveApiKeysToStorage(apiKeys);
+
+    // Generate instructions for the user
+    const instructions = generateApiKeyInstructions(apiKeys);
+
+    // Show instructions to the user
+    setSaveApiKeysMessage(instructions);
+    setShowApiKeyInstructions(true);
+  };
+
+  // Handle saving API keys to .env file
+  const handleSaveApiKeysToEnv = async () => {
+    // Extract API keys from settings
+    const apiKeys = extractApiKeys(settings);
+
+    // Save API keys to .env file
+    setTestingConnection(true);
+    try {
+      const result = await saveApiKeysToEnv(apiKeys);
+
+      if (result.success) {
+        setSaveApiKeysMessage(`API keys successfully saved to .env file. The changes will take effect after restarting the application.`);
+      } else {
+        setSaveApiKeysMessage(`Error saving API keys to .env file: ${result.message}`);
+      }
+
+      setShowApiKeyInstructions(true);
+    } catch (error) {
+      setSaveApiKeysMessage(`Error saving API keys to .env file: ${error.message || 'Unknown error'}`);
+      setShowApiKeyInstructions(true);
+    } finally {
+      setTestingConnection(false);
+    }
+  };
+
+  // Copy API key instructions to clipboard
+  const copyInstructionsToClipboard = () => {
+    const apiKeys = extractApiKeys(settings);
+    const apiKeysList = Object.entries(apiKeys)
+      .filter(([_, value]) => value) // Only include non-empty values
+      .map(([provider, value]) => `${provider}: ${value}`)
+      .join('\n');
+
+    navigator.clipboard.writeText(apiKeysList);
+    alert('API keys copied to clipboard!');
+  };
 
   // Check provider status when settings modal is opened
   useEffect(() => {
@@ -210,16 +269,55 @@ const SettingsModal = () => {
                       />
                     </button>
                   </div>
+
+                  {/* Debug Mode */}
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium">Debug Mode</label>
+                    <button
+                      onClick={() => updateSetting('debugMode', !settings.debugMode)}
+                      className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors focus:outline-none ${
+                        settings.debugMode ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'
+                      }`}
+                    >
+                      <span
+                        className={`inline-block w-4 h-4 transform bg-white rounded-full transition-transform ${
+                          settings.debugMode ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
                 </div>
 
                 {/* Reset Button */}
                 <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
-                  <button
-                    onClick={resetSettings}
-                    className="px-4 py-2 bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
-                  >
-                    Reset to Default Settings
-                  </button>
+                  {/* Environment Variables Debugger */}
+                  <EnvDebugger />
+
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      className="px-4 py-2 bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors flex items-center"
+                      onClick={() => {
+                        handleSaveApiKeys();
+                      }}
+                    >
+                      <FaSave className="mr-2" /> Save to Browser
+                    </button>
+                    <button
+                      className="px-4 py-2 bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400 rounded-lg hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors flex items-center"
+                      onClick={() => {
+                        handleSaveApiKeysToEnv();
+                      }}
+                      disabled={testingConnection}
+                    >
+                      <FaKey className="mr-2" /> {testingConnection ? 'Saving...' : 'Save to .env File'}
+                    </button>
+                    <button
+                      onClick={resetSettings}
+                      className="px-4 py-2 bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
+                    >
+                      Reset to Default Settings
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
@@ -620,6 +718,9 @@ const SettingsModal = () => {
 
                     {settings.providers.openrouter.enabled && (
                       <div className="space-y-4">
+                        {/* OpenRouter Debugger */}
+                        <OpenRouterDebugger />
+
                         <div>
                           <label className="block text-sm font-medium mb-2">API Key</label>
                           <div className="flex">
@@ -871,6 +972,57 @@ const SettingsModal = () => {
           </button>
         </div>
       </div>
+
+      {/* API Key Instructions Modal */}
+      {showApiKeyInstructions && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md p-6 relative">
+            <button
+              onClick={() => setShowApiKeyInstructions(false)}
+              className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+            >
+              <FaTimes />
+            </button>
+
+            <h3 className="text-xl font-semibold mb-4 text-gray-800 dark:text-white">API Keys Saved</h3>
+
+            <div className="bg-gray-100 dark:bg-gray-700 p-4 rounded-lg mb-4 overflow-auto max-h-60">
+              <div className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
+                {saveApiKeysMessage.includes('.env file') ? (
+                  <>
+                    <p className="mb-2">✅ {saveApiKeysMessage}</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="mb-2">✅ Your API keys have been saved to your browser&apos;s localStorage.</p>
+                    <p className="mb-4">They will be automatically loaded the next time you open the application.</p>
+
+                    <h4 className="font-semibold mb-2">API Keys Saved:</h4>
+                    <pre className="bg-gray-200 dark:bg-gray-600 p-2 rounded">
+                      {saveApiKeysMessage}
+                    </pre>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-2">
+              <button
+                onClick={copyInstructionsToClipboard}
+                className="px-4 py-2 bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors flex items-center"
+              >
+                <FaCopy className="mr-2" /> Copy API Keys
+              </button>
+              <button
+                onClick={() => setShowApiKeyInstructions(false)}
+                className="px-4 py-2 bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

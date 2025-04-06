@@ -3,12 +3,15 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from './Sidebar';
 import ChatInterface from './ChatInterface';
+import ResearchChatInterface from './ResearchChatInterface';
 import DarkModeToggle from './DarkModeToggle';
 import SettingsButton from './SettingsButton';
 import SettingsModal from './SettingsModal';
+import ProjectModal from './ProjectModal';
 import WelcomeMessage from './WelcomeMessage';
 import { ModelProvider } from '../context/ModelContext';
 import { SettingsProvider } from '../context/SettingsContext';
+import { ProjectProvider, useProject, PROJECT_TYPES } from '../context/ProjectContext';
 
 const Layout = () => {
   const [activeAgent, setActiveAgent] = useState(null);
@@ -47,63 +50,84 @@ const Layout = () => {
     );
   }
 
+  // Create a Layout wrapper component that uses the ProjectContext
+  const LayoutContent = () => {
+    const { activeProject } = useProject();
+
+    // Determine if we should show the research interface
+    const isResearchProject = activeProject?.type === PROJECT_TYPES.RESEARCH;
+
+    return (
+      <div className="flex h-screen bg-gray-50 dark:bg-gray-900 overflow-hidden">
+        {/* Mobile menu button */}
+        <button
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          className="lg:hidden fixed top-4 left-4 z-50 p-2 rounded-lg bg-white dark:bg-gray-800 shadow-md"
+          aria-label="Toggle menu"
+        >
+          <svg className="w-6 h-6 text-gray-800 dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            {isMobileMenuOpen ? (
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
+            ) : (
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"></path>
+            )}
+          </svg>
+        </button>
+
+        {/* Header controls */}
+        <div className="fixed top-4 right-4 z-50 flex gap-2">
+          <SettingsButton />
+          <DarkModeToggle />
+        </div>
+
+        {/* Sidebar - responsive */}
+        <div className={`
+          lg:relative fixed inset-y-0 left-0 z-40 transform transition-transform duration-300 ease-in-out
+          ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+        `}>
+          <Sidebar activeAgent={activeAgent} setActiveAgent={setActiveAgent} />
+        </div>
+
+        {/* Overlay for mobile */}
+        {isMobileMenuOpen && (
+          <div
+            className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-30"
+            onClick={() => setIsMobileMenuOpen(false)}
+          ></div>
+        )}
+
+        {/* Main content */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <main className="flex-1 overflow-hidden">
+            <div className="h-full animate-fade-in">
+              {activeAgent ? (
+                isResearchProject ? (
+                  <ResearchChatInterface />
+                ) : (
+                  <ChatInterface activeAgent={activeAgent} />
+                )
+              ) : (
+                <WelcomeMessage />
+              )}
+            </div>
+          </main>
+        </div>
+
+        {/* Settings Modal */}
+        <SettingsModal />
+
+        {/* Project Modal */}
+        <ProjectModal />
+      </div>
+    );
+  };
+
   return (
     <SettingsProvider>
       <ModelProvider>
-        <div className="flex h-screen bg-gray-50 dark:bg-gray-900 overflow-hidden">
-          {/* Mobile menu button */}
-          <button
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="lg:hidden fixed top-4 left-4 z-50 p-2 rounded-lg bg-white dark:bg-gray-800 shadow-md"
-            aria-label="Toggle menu"
-          >
-            <svg className="w-6 h-6 text-gray-800 dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              {isMobileMenuOpen ? (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path>
-              ) : (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"></path>
-              )}
-            </svg>
-          </button>
-
-          {/* Header controls */}
-          <div className="fixed top-4 right-4 z-50 flex gap-2">
-            <SettingsButton />
-            <DarkModeToggle />
-          </div>
-
-          {/* Sidebar - responsive */}
-          <div className={`
-            lg:relative fixed inset-y-0 left-0 z-40 transform transition-transform duration-300 ease-in-out
-            ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-          `}>
-            <Sidebar activeAgent={activeAgent} setActiveAgent={setActiveAgent} />
-          </div>
-
-          {/* Overlay for mobile */}
-          {isMobileMenuOpen && (
-            <div
-              className="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-30"
-              onClick={() => setIsMobileMenuOpen(false)}
-            ></div>
-          )}
-
-          {/* Main content */}
-          <div className="flex-1 flex flex-col overflow-hidden">
-            <main className="flex-1 overflow-hidden">
-              <div className="h-full animate-fade-in">
-                {activeAgent ? (
-                  <ChatInterface activeAgent={activeAgent} />
-                ) : (
-                  <WelcomeMessage />
-                )}
-              </div>
-            </main>
-          </div>
-
-          {/* Settings Modal */}
-          <SettingsModal />
-        </div>
+        <ProjectProvider>
+          <LayoutContent />
+        </ProjectProvider>
       </ModelProvider>
     </SettingsProvider>
   );

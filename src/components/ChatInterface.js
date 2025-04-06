@@ -1,12 +1,15 @@
 "use client";
 
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { useProject } from '../context/ProjectContext';
+import { joinPath, saveFile } from '../utils/fileSystem';
 import { FaPaperPlane, FaFileExport, FaFileImport, FaRobot, FaUser, FaEllipsisH, FaSpinner } from 'react-icons/fa';
 import FileUpload, { FileMessage } from './FileUpload';
 import ModelSelector from './ModelSelector';
 import { useModelContext } from '../context/ModelContext';
 import { useSettings } from '../context/SettingsContext';
 import { createProvider } from '../services/providers/provider-factory';
+import MarkdownRenderer from './MarkdownRenderer';
 
 const ChatInterface = ({ activeAgent }) => {
   const [messages, setMessages] = useState([]);
@@ -19,6 +22,7 @@ const ChatInterface = ({ activeAgent }) => {
 
   // Get contexts
   const { isOllamaAvailable, getModelForAgent, setModelForAgent } = useModelContext();
+  const { activeProject } = useProject();
   const { settings } = useSettings();
 
   // Get agent information - memoized to prevent unnecessary recalculations
@@ -53,9 +57,39 @@ const ChatInterface = ({ activeAgent }) => {
     return agentInfo[agentId] || { title: 'Assistant', color: 'from-gray-500 to-gray-600', greeting: 'Hello! How can I help you today? You can upload files for me to analyze.' };
   }, []);
 
-  // Initialize with greeting message when agent changes
+  // Helper function to migrate timestamps from strings to Date objects
+  const migrateTimestamps = (messages) => {
+    return messages.map(msg => {
+      // If timestamp is a string, convert it to a Date object
+      if (typeof msg.timestamp === 'string') {
+        return { ...msg, timestamp: new Date(msg.timestamp) };
+      }
+      return msg;
+    });
+  };
+
+  // Load chat history from localStorage or project storage
   useEffect(() => {
     if (activeAgent) {
+      // Create a unique key for this chat history that includes the project ID
+      const historyKey = activeProject ? `chatHistory-${activeProject.id}-${activeAgent}` : `chatHistory-${activeAgent}`;
+
+      const savedMessages = localStorage.getItem(historyKey);
+      if (savedMessages) {
+        try {
+          const parsedMessages = JSON.parse(savedMessages);
+          if (Array.isArray(parsedMessages) && parsedMessages.length > 0) {
+            // Migrate any string timestamps to Date objects
+            const migratedMessages = migrateTimestamps(parsedMessages);
+            setMessages(migratedMessages);
+            return; // Don't add greeting if we loaded messages
+          }
+        } catch (error) {
+          console.error('Error parsing saved messages:', error);
+        }
+      }
+
+      // If no history or error parsing, add greeting message
       const agentInfo = getAgentInfo(activeAgent);
       setMessages([
         {
@@ -65,8 +99,54 @@ const ChatInterface = ({ activeAgent }) => {
           timestamp: new Date()
         }
       ]);
+
+      // TODO: In the future, we'll load chat history from the project storage path
+      // if (activeProject?.storagePath) {
+      //   // Load from file system when implemented
+      // }
     }
-  }, [activeAgent]);
+  }, [activeAgent, activeProject, getAgentInfo]);
+
+  // Save chat history to localStorage and project storage
+  useEffect(() => {
+    if (activeAgent && messages.length > 0) {
+      // Create a unique key for this chat history that includes the project ID
+      const historyKey = activeProject ? `chatHistory-${activeProject.id}-${activeAgent}` : `chatHistory-${activeAgent}`;
+
+      // Save to localStorage
+      localStorage.setItem(historyKey, JSON.stringify(messages));
+
+      // Save to project storage path if available
+      if (activeProject?.storagePath) {
+        // Create a formatted version of the chat history for saving to a file
+        const agentInfo = getAgentInfo(activeAgent);
+        const formattedHistory = messages.map(msg => {
+          // Handle different timestamp formats
+          let time;
+          if (msg.timestamp instanceof Date) {
+            time = msg.timestamp.toLocaleString();
+          } else if (typeof msg.timestamp === 'string') {
+            time = new Date(msg.timestamp).toLocaleString();
+          } else {
+            time = new Date().toLocaleString(); // Fallback to current time
+          }
+
+          const role = msg.sender === 'user' ? 'You' : agentInfo.title;
+          return `[${time}] ${role}:\n${msg.content}\n\n`;
+        }).join('---\n\n');
+
+        // Save the chat history to a file in the project storage path
+        // This is async but we don't need to await it
+        // Pass false to avoid download prompts
+        saveFile(
+          activeProject.storagePath,
+          `${activeAgent}-chat-history.txt`,
+          formattedHistory,
+          false // Don't force download
+        );
+      }
+    }
+  }, [messages, activeAgent, activeProject, getAgentInfo]);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
@@ -74,6 +154,26 @@ const ChatInterface = ({ activeAgent }) => {
   }, [messages]);
 
   const handleFileSelect = (files) => {
+    // If we have a project storage path, save the files there
+    if (activeProject?.storagePath) {
+      // Save each file to the project storage path
+      files.forEach(file => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          // Save the file to the project storage path
+          // This is async but we don't need to await it
+          // Pass false to avoid download prompts
+          saveFile(
+            joinPath(activeProject.storagePath, 'uploads'),
+            file.name,
+            new Blob([reader.result]),
+            false // Don't force download
+          );
+        };
+        reader.readAsArrayBuffer(file);
+      });
+    }
+
     setSelectedFiles([...selectedFiles, ...files]);
   };
 
@@ -330,7 +430,14 @@ const ChatInterface = ({ activeAgent }) => {
               }`}
             >
               <div className="leading-relaxed">
-                {message.content}
+                {message.sender === 'agent' ? (
+                  <MarkdownRenderer
+                    content={message.content}
+                    debug={settings.debugMode}
+                  />
+                ) : (
+                  message.content
+                )}
                 {message.isStreaming && (
                   <span className="inline-block ml-1 animate-pulse">▋</span>
                 )}
@@ -354,7 +461,14 @@ const ChatInterface = ({ activeAgent }) => {
                   {message.sender === 'agent' && isOllamaAvailable && (
                     <span className="text-xs">{getModelForAgent(activeAgent)}</span>
                   )}
-                  <span>{message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                  <span>
+                    {message.timestamp instanceof Date
+                      ? message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                      : typeof message.timestamp === 'string'
+                        ? new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                        : ''
+                    }
+                  </span>
                 </div>
                 {message.error && (
                   <span className="text-red-500 dark:text-red-400">Error</span>

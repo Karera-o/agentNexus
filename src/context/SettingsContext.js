@@ -3,17 +3,41 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { createProvider, getAllProviders } from '../services/providers/provider-factory';
 
+import { getApiKey, getEnvApiKey, saveApiKeysToEnv, extractApiKeys } from '../utils/envManager';
+import { getClientEnvApiKey, logAllClientEnvVars } from '../utils/clientEnv';
+
+// Log API key loading
+const logApiKeyLoading = (provider, key) => {
+  // Check if key exists in environment variables
+  const clientEnvKey = getClientEnvApiKey(provider);
+  if (clientEnvKey) {
+    console.log(`Loading API key for ${provider}: Found in environment variables`);
+    return clientEnvKey;
+  }
+
+  console.log(`Loading API key for ${provider}: ${key ? 'Found in localStorage' : 'Not found'}`);
+  return key;
+};
+
+// Log all client-side environment variables on startup
+if (typeof window !== 'undefined') {
+  setTimeout(() => {
+    logAllClientEnvVars();
+  }, 1000);
+}
+
 // Default settings
 const defaultSettings = {
   theme: 'system', // 'light', 'dark', 'system'
   messageHistory: 50, // Number of messages to keep in history
   streamResponses: true, // Whether to stream responses
+  debugMode: false, // Whether to show debug information
   providers: {
     // Local models
     ollama: {
       name: 'Ollama',
       enabled: true,
-      baseUrl: 'http://localhost:11434/api',
+      baseUrl: logApiKeyLoading('ollama_host', getApiKey('ollama_host', 'http://localhost:11434/api')),
       defaultModel: '',
       models: [],
       description: 'Run large language models locally',
@@ -25,7 +49,7 @@ const defaultSettings = {
       name: 'Anthropic',
       enabled: true,
       baseUrl: 'https://api.anthropic.com',
-      apiKey: '',
+      apiKey: logApiKeyLoading('anthropic', getApiKey('anthropic', '')),
       defaultModel: 'claude-3-haiku-20240307',
       models: [
         { id: 'claude-3-opus-20240229', name: 'Claude 3 Opus', description: 'Most powerful model for highly complex tasks' },
@@ -40,7 +64,7 @@ const defaultSettings = {
       name: 'DeepSeek',
       enabled: true,
       baseUrl: 'https://api.deepseek.com',
-      apiKey: '',
+      apiKey: logApiKeyLoading('deepseek', getApiKey('deepseek', '')),
       defaultModel: 'deepseek-chat',
       models: [
         { id: 'deepseek-chat', name: 'DeepSeek Chat', description: 'General purpose chat model' },
@@ -54,7 +78,7 @@ const defaultSettings = {
       name: 'Google Gemini',
       enabled: true,
       baseUrl: 'https://generativelanguage.googleapis.com/v1',
-      apiKey: '',
+      apiKey: logApiKeyLoading('gemini', getApiKey('gemini', '')),
       defaultModel: 'gemini-1.5-pro-latest',
       models: [
         { id: 'gemini-2.5-pro-exp-03-25', name: 'Gemini 2.5 Pro (Experimental)', description: 'Latest experimental model with 1M context window' },
@@ -72,7 +96,7 @@ const defaultSettings = {
       name: 'OpenRouter',
       enabled: true,
       baseUrl: 'https://openrouter.ai/api/v1',
-      apiKey: '',
+      apiKey: logApiKeyLoading('openrouter', getApiKey('openrouter', '')),
       defaultModel: 'openai/gpt-3.5-turbo',
       models: [],
       specificProvider: '[default]',
@@ -85,7 +109,7 @@ const defaultSettings = {
       name: 'Requesty',
       enabled: false,
       baseUrl: 'https://api.requesty.ai/v1',
-      apiKey: '',
+      apiKey: logApiKeyLoading('requesty', getApiKey('requesty', '')),
       defaultModel: '',
       models: [],
       description: 'Custom API endpoint compatible with OpenAI',
@@ -158,16 +182,63 @@ export const SettingsProvider = ({ children }) => {
 
   // Update a provider setting
   const updateProviderSetting = (provider, key, value) => {
-    setSettings(prev => ({
-      ...prev,
-      providers: {
-        ...prev.providers,
-        [provider]: {
-          ...prev.providers[provider],
-          [key]: value,
+    // Save API key to localStorage if it's being updated
+    if (key === 'apiKey' && value) {
+      localStorage.setItem(`apiKey_${provider}`, value);
+      console.log(`Saved API key for ${provider} to localStorage`);
+
+      // Also update the .env file
+      const apiKeys = { [provider]: value };
+      saveApiKeysToEnv(apiKeys)
+        .then(result => {
+          if (result.success) {
+            console.log(`Saved API key for ${provider} to .env file`);
+          } else {
+            console.error(`Failed to save API key for ${provider} to .env file:`, result.message);
+          }
+        })
+        .catch(error => {
+          console.error(`Error saving API key for ${provider} to .env file:`, error);
+        });
+    }
+
+    // Special case for Ollama host
+    if (provider === 'ollama' && key === 'baseUrl' && value) {
+      localStorage.setItem('apiKey_ollama_host', value);
+      console.log(`Saved Ollama host to localStorage`);
+
+      // Also update the .env file
+      const apiKeys = { ollama_host: value };
+      saveApiKeysToEnv(apiKeys)
+        .then(result => {
+          if (result.success) {
+            console.log(`Saved Ollama host to .env file`);
+          } else {
+            console.error(`Failed to save Ollama host to .env file:`, result.message);
+          }
+        })
+        .catch(error => {
+          console.error(`Error saving Ollama host to .env file:`, error);
+        });
+    }
+
+    setSettings(prev => {
+      const newSettings = {
+        ...prev,
+        providers: {
+          ...prev.providers,
+          [provider]: {
+            ...prev.providers[provider],
+            [key]: value,
+          },
         },
-      },
-    }));
+      };
+
+      // Save settings to localStorage
+      localStorage.setItem('settings', JSON.stringify(newSettings));
+
+      return newSettings;
+    });
   };
 
   // Toggle settings modal
@@ -177,6 +248,12 @@ export const SettingsProvider = ({ children }) => {
 
   // Reset settings to default
   const resetSettings = () => {
+    // Clear all API keys from localStorage
+    Object.keys(settings.providers).forEach(provider => {
+      localStorage.removeItem(`apiKey_${provider}`);
+    });
+    localStorage.removeItem('apiKey_ollama_host');
+
     setSettings(defaultSettings);
     localStorage.removeItem('devAgentSettings');
   };

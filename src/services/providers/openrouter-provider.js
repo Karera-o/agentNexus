@@ -13,10 +13,23 @@ export class OpenRouterProvider extends BaseProvider {
   constructor(settings) {
     super(settings);
     this.name = 'openrouter';
+
+    // Get API key from settings, environment variables, or localStorage
     this.apiKey = settings.providers.openrouter.apiKey || '';
+
+    // Check if we have an API key in process.env
+    if (process.env.NEXT_PUBLIC_OPENROUTER_API_KEY && !this.apiKey) {
+      console.log('OpenRouter: Using API key from environment variables');
+      this.apiKey = process.env.NEXT_PUBLIC_OPENROUTER_API_KEY;
+    }
+
     this.baseUrl = settings.providers.openrouter.baseUrl || 'https://openrouter.ai/api/v1';
     this.specificProvider = settings.providers.openrouter.specificProvider || OPENROUTER_DEFAULT_PROVIDER_NAME;
     this.useMiddleOutTransform = settings.providers.openrouter.useMiddleOutTransform !== false; // Default to true
+
+    // Debug log for API key
+    console.log(`OpenRouter: Initialized with API key: ${this.apiKey ? 'Present (length: ' + this.apiKey.length + ')' : 'Not set'}`);
+    console.log(`OpenRouter: Base URL: ${this.baseUrl}`);
   }
 
   /**
@@ -24,6 +37,12 @@ export class OpenRouterProvider extends BaseProvider {
    * @returns {Object} Headers object
    */
   getHeaders() {
+    // Double-check if we have an API key in process.env
+    if (!this.apiKey && process.env.NEXT_PUBLIC_OPENROUTER_API_KEY) {
+      console.log('OpenRouter: Using API key from environment variables in getHeaders');
+      this.apiKey = process.env.NEXT_PUBLIC_OPENROUTER_API_KEY;
+    }
+
     return {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${this.apiKey}`,
@@ -70,6 +89,13 @@ export class OpenRouterProvider extends BaseProvider {
    */
   async listModels() {
     console.log('OpenRouter: Attempting to list models');
+    console.log(`OpenRouter: API Key: ${this.apiKey ? 'Present (length: ' + this.apiKey.length + ')' : 'Not set'}`);
+
+    // Double-check if we have an API key in process.env
+    if (!this.apiKey && process.env.NEXT_PUBLIC_OPENROUTER_API_KEY) {
+      console.log('OpenRouter: Using API key from environment variables');
+      this.apiKey = process.env.NEXT_PUBLIC_OPENROUTER_API_KEY;
+    }
 
     if (!this.apiKey) {
       console.log('OpenRouter: No API key provided, returning empty list');
@@ -77,36 +103,60 @@ export class OpenRouterProvider extends BaseProvider {
     }
 
     try {
-      console.log(`OpenRouter: Fetching models from ${this.baseUrl}/models`);
-      const response = await fetch(`${this.baseUrl}/models`, {
-        headers: this.getHeaders(),
-        signal: AbortSignal.timeout(10000) // 10 second timeout
+      // Log the headers we're sending (without the actual API key)
+      const headers = this.getHeaders();
+      console.log('OpenRouter: Request headers:', {
+        ...headers,
+        'Authorization': headers.Authorization ? 'Bearer [REDACTED]' : 'Not set'
       });
 
+      console.log(`OpenRouter: Fetching models from ${this.baseUrl}/models`);
+      const response = await fetch(`${this.baseUrl}/models`, {
+        method: 'GET',
+        headers: headers,
+        signal: AbortSignal.timeout(15000) // 15 second timeout
+      });
+
+      console.log(`OpenRouter: Response status: ${response.status}`);
+
       if (!response.ok) {
-        const errorText = await response.text().catch(() => 'No error details');
+        let errorText;
+        try {
+          const errorData = await response.json();
+          errorText = JSON.stringify(errorData);
+        } catch (e) {
+          errorText = await response.text().catch(() => 'No error details');
+        }
         console.error(`OpenRouter API Error (${response.status}): ${errorText}`);
         throw new Error(`Failed to fetch models: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
+      console.log(`OpenRouter: Response data:`, data);
       console.log(`OpenRouter: Successfully fetched ${data.data?.length || 0} models`);
 
       // Map the models to our format
-      const mappedModels = data.data.map(model => ({
-        name: model.id,
-        displayName: this.getDisplayName(model.id),
-        size: null,
-        modified_at: Date.now(),
-        provider: 'openrouter',
-        context_length: model.context_length,
-        pricing: model.pricing,
-        description: model.description,
-        supports_images: model.architecture?.modality?.includes("image") || false,
-        supports_vision: model.architecture?.modality?.includes("image") || false,
-        supports_functions: model.architecture?.features?.includes("tools") || false,
-        top_provider: model.top_provider
-      }));
+      const mappedModels = data.data.map(model => {
+        // Check if the model is free
+        const isFree = model.id.includes('free') ||
+                      (model.pricing && model.pricing.prompt === 0 && model.pricing.completion === 0);
+
+        return {
+          name: model.id,
+          displayName: this.getDisplayName(model.id),
+          size: null,
+          modified_at: Date.now(),
+          provider: 'openrouter',
+          context_length: model.context_length,
+          pricing: model.pricing,
+          description: model.description,
+          supports_images: model.architecture?.modality?.includes("image") || false,
+          supports_vision: model.architecture?.modality?.includes("image") || false,
+          supports_functions: model.architecture?.features?.includes("tools") || false,
+          top_provider: model.top_provider,
+          is_free: isFree
+        };
+      });
 
       console.log('OpenRouter: Mapped models:', mappedModels.map(m => m.name).join(', '));
       return mappedModels;
@@ -130,20 +180,90 @@ export class OpenRouterProvider extends BaseProvider {
     const provider = parts[0];
     const model = parts[1];
 
-    // Capitalize provider name
-    const providerName = provider.charAt(0).toUpperCase() + provider.slice(1);
+    // Format the provider name
+    let providerDisplay = '';
 
-    // Format model name
-    let modelName = model;
-    if (model.includes('-')) {
-      modelName = model.split('-')
-        .map(part => part.charAt(0).toUpperCase() + part.slice(1))
-        .join(' ');
+    // Special case for meta-llama to show as Meta
+    if (provider === 'meta-llama') {
+      providerDisplay = 'Meta';
+    } else if (provider === 'anthropic') {
+      providerDisplay = 'Anthropic';
+    } else if (provider === 'openai') {
+      providerDisplay = 'OpenAI';
+    } else if (provider === 'google') {
+      providerDisplay = 'Google';
+    } else if (provider === 'mistralai') {
+      providerDisplay = 'Mistral';
+    } else if (provider === 'deepseek') {
+      providerDisplay = 'DeepSeek';
     } else {
-      modelName = model.charAt(0).toUpperCase() + model.slice(1);
+      // Capitalize the provider name
+      providerDisplay = provider.charAt(0).toUpperCase() + provider.slice(1);
     }
 
-    return `${providerName} ${modelName}`;
+    // Format the model name
+    let modelDisplay = model;
+
+    // Special formatting for common models
+    if (model.includes('llama')) {
+      // For Llama models, show version and size
+      if (model.includes('llama-3')) {
+        modelDisplay = `Llama 3${model.includes('70b') ? ' 70B' : model.includes('8b') ? ' 8B' : ''}`;
+        // Add 'free' tag if it's a free model
+        if (model.includes('free')) {
+          modelDisplay += ' (Free)';
+        }
+      } else if (model.includes('llama-2')) {
+        modelDisplay = `Llama 2${model.includes('70b') ? ' 70B' : model.includes('13b') ? ' 13B' : ' 7B'}`;
+      }
+    } else if (model.includes('claude')) {
+      // For Claude models
+      if (model.includes('opus')) {
+        modelDisplay = 'Claude Opus';
+      } else if (model.includes('sonnet')) {
+        modelDisplay = 'Claude Sonnet';
+      } else if (model.includes('haiku')) {
+        modelDisplay = 'Claude Haiku';
+      } else {
+        modelDisplay = 'Claude ' + model.split('-').pop();
+      }
+    } else if (model.includes('gpt-4')) {
+      // For GPT-4 models
+      if (model.includes('turbo')) {
+        modelDisplay = 'GPT-4 Turbo';
+      } else if (model.includes('vision')) {
+        modelDisplay = 'GPT-4 Vision';
+      } else {
+        modelDisplay = 'GPT-4';
+      }
+    } else if (model.includes('gpt-3.5')) {
+      modelDisplay = 'GPT-3.5 Turbo';
+    } else if (model.includes('gemini')) {
+      if (model.includes('pro')) {
+        modelDisplay = 'Gemini Pro';
+      } else if (model.includes('flash')) {
+        modelDisplay = 'Gemini Flash';
+      } else {
+        modelDisplay = 'Gemini';
+      }
+    } else if (model.includes('mistral')) {
+      if (model.includes('large')) {
+        modelDisplay = 'Mistral Large';
+      } else if (model.includes('medium')) {
+        modelDisplay = 'Mistral Medium';
+      } else if (model.includes('small')) {
+        modelDisplay = 'Mistral Small';
+      } else {
+        modelDisplay = 'Mistral';
+      }
+    } else {
+      // For other models, capitalize and clean up the name
+      modelDisplay = model.split('-')
+        .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(' ');
+    }
+
+    return `${providerDisplay} ${modelDisplay}`;
   }
 
   /**
