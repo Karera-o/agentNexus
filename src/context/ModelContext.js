@@ -315,7 +315,7 @@ export const ModelProvider = ({ children }) => {
           });
       }, 100);
     }
-  }, [availableModels.openrouter, availableModels.ollama, initializeOpenRouterModels, loadAllProviderModels, settings.providers.openrouter?.enabled, settings.providers.ollama?.enabled, createProvider, settings]); // Add dependencies
+  }, [availableModels.openrouter, availableModels.ollama, initializeOpenRouterModels, loadAllProviderModels, settings.providers.openrouter?.enabled, settings.providers.ollama?.enabled, settings]); // Add dependencies
 
   // Save agent models to localStorage when they change
   useEffect(() => {
@@ -488,7 +488,7 @@ export const ModelProvider = ({ children }) => {
 
         return false;
       });
-  }, [loadAllProviderModels, isLoading, initializeOpenRouterModels, availableModels.openrouter, availableModels.ollama, settings.providers.openrouter?.enabled, settings.providers.ollama?.enabled, createProvider, settings]);
+  }, [loadAllProviderModels, isLoading, initializeOpenRouterModels, availableModels.openrouter, availableModels.ollama, settings.providers.openrouter?.enabled, settings.providers.ollama?.enabled, settings]);
 
   // Context value
   const value = {

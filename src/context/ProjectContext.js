@@ -90,7 +90,7 @@ export const ProjectProvider = ({ children }) => {
     };
 
     loadProjects();
-  }, []);
+  }, [activeProject]);
 
   // Save projects to file system whenever they change
   useEffect(() => {

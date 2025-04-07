@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { FaCog, FaTimes, FaCheck, FaExclamationTriangle, FaRobot, FaServer, FaKey, FaGlobe, FaToggleOn, FaToggleOff, FaInfoCircle, FaSave, FaCopy } from 'react-icons/fa';
 import { useSettings } from '../context/SettingsContext';
 import { extractApiKeys, saveApiKeysToStorage, generateApiKeyInstructions } from '../utils/storageManager';
@@ -69,15 +69,8 @@ const SettingsModal = () => {
     alert('API keys copied to clipboard!');
   };
 
-  // Check provider status when settings modal is opened
-  useEffect(() => {
-    if (isSettingsOpen) {
-      fetchAllProviderStatus();
-    }
-  }, [isSettingsOpen]);
-
   // Fetch status for all enabled providers
-  const fetchAllProviderStatus = async () => {
+  const fetchAllProviderStatus = useCallback(async () => {
     setTestingConnection(true);
     try {
       // Get all enabled providers
@@ -105,7 +98,14 @@ const SettingsModal = () => {
     } finally {
       setTestingConnection(false);
     }
-  };
+  }, [settings.providers, fetchModelsForProvider, setProviderStatus, setTestingConnection]);
+
+  // Check provider status when settings modal is opened
+  useEffect(() => {
+    if (isSettingsOpen) {
+      fetchAllProviderStatus();
+    }
+  }, [isSettingsOpen, fetchAllProviderStatus]);
 
   // Check status for a specific provider
   const checkProviderStatus = async (provider) => {
@@ -576,7 +576,7 @@ const SettingsModal = () => {
                         </div>
 
                         <p className="text-sm text-gray-500 dark:text-gray-400">
-                          LocalAI is an API compatible with OpenAI's API but running locally or on your own server.
+                          LocalAI is an API compatible with OpenAI&apos;s API but running locally or on your own server.
                         </p>
                       </div>
                     )}
@@ -832,14 +832,14 @@ const SettingsModal = () => {
                                 className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm"
                               />
                               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                Force a specific provider (e.g., 'openai', 'anthropic'). Leave as '[default]' to use OpenRouter's routing.
+                                Force a specific provider (e.g., &apos;openai&apos;, &apos;anthropic&apos;). Leave as &apos;[default]&apos; to use OpenRouter&apos;s routing.
                               </p>
                             </div>
                           </div>
                         </div>
 
                         <p className="text-sm text-gray-500 dark:text-gray-400">
-                          OpenRouter provides access to multiple AI models through a single API. Models are specified in the format "provider/model-name".
+                          OpenRouter provides access to multiple AI models through a single API. Models are specified in the format &quot;provider/model-name&quot;.
                         </p>
                       </div>
                     )}
@@ -920,7 +920,7 @@ const SettingsModal = () => {
                         </div>
 
                         <p className="text-sm text-gray-500 dark:text-gray-400">
-                          Requesty is a custom API endpoint compatible with OpenAI's API format. Use this for self-hosted or custom model APIs.
+                          Requesty is a custom API endpoint compatible with OpenAI&apos;s API format. Use this for self-hosted or custom model APIs.
                         </p>
                       </div>
                     )}

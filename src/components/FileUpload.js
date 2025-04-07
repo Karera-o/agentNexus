@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef } from 'react';
+import Image from 'next/image';
 import { FaFile, FaImage, FaFileAlt, FaFilePdf, FaFileCode, FaTimes, FaPaperclip } from 'react-icons/fa';
 
 const FileUpload = ({ onFileSelect }) => {
@@ -109,10 +110,13 @@ export const FilePreview = ({ file, onRemove }) => {
     if (file.type.startsWith('image/')) {
       return (
         <div className="relative group">
-          <img
+          <Image
             src={URL.createObjectURL(file)}
             alt={file.name}
+            width={300}
+            height={128}
             className="w-full h-32 object-cover rounded-lg"
+            unoptimized // Using unoptimized for blob URLs
           />
           <div className="absolute inset-0 bg-black bg-opacity-40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-lg">
             <button

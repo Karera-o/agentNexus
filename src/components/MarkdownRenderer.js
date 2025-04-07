@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import Image from 'next/image';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -109,13 +110,39 @@ const MarkdownRenderer = ({ content, className = '', debug = false }) => {
               {...props}
             />
           ),
-          img: ({ node, ...props }) => (
-            <img
-              className="max-w-full h-auto my-2 rounded"
-              alt={props.alt || 'Image'}
-              {...props}
-            />
-          ),
+          img: ({ node, ...props }) => {
+            // Extract src and alt from props
+            const { src, alt, ...rest } = props;
+
+            // Check if the src is a valid URL
+            const isValidUrl = (url) => {
+              try {
+                new URL(url);
+                return true;
+              } catch (e) {
+                return false;
+              }
+            };
+
+            return isValidUrl(src) ? (
+              <Image
+                src={src}
+                alt={alt || 'Image'}
+                width={800}
+                height={600}
+                className="max-w-full h-auto my-2 rounded"
+                unoptimized // Using unoptimized for external URLs
+              />
+            ) : (
+              // Fallback to regular img tag for invalid URLs or relative paths
+              <img
+                className="max-w-full h-auto my-2 rounded"
+                alt={alt || 'Image'}
+                src={src}
+                {...rest}
+              />
+            );
+          },
 
           // Code blocks
           code: ({ node, inline, className, children, ...props }) => {
