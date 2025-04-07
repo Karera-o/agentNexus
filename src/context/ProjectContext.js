@@ -54,7 +54,7 @@ export const ProjectProvider = ({ children }) => {
         const activeData = await activeResponse.json();
         if (activeData.activeProject) {
           setActiveProject(activeData.activeProject);
-        } else if (!activeProject) {
+        } else {
           // Create a default project if none exists
           const defaultProjectWithId = {
             ...defaultProject,
@@ -76,7 +76,7 @@ export const ProjectProvider = ({ children }) => {
         const savedActiveProject = localStorage.getItem('activeProject');
         if (savedActiveProject) {
           setActiveProject(JSON.parse(savedActiveProject));
-        } else if (!activeProject) {
+        } else {
           // Create a default project if none exists
           const defaultProjectWithId = {
             ...defaultProject,
@@ -90,7 +90,7 @@ export const ProjectProvider = ({ children }) => {
     };
 
     loadProjects();
-  }, [activeProject]);
+  }, []);
 
   // Save projects to file system whenever they change
   useEffect(() => {
