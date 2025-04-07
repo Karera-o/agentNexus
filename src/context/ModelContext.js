@@ -268,12 +268,46 @@ export const ModelProvider = ({ children }) => {
       setTimeout(() => {
         loadAllProviderModels()
           .then(() => {
-            // After loading all models, check if OpenRouter models are properly loaded
-            // If not, try to initialize them again
-            if (settings.providers.openrouter?.enabled &&
-                (!availableModels.openrouter || availableModels.openrouter.length === 0)) {
+            // After loading all models, check if any models are missing
+            const needsOpenRouterModels = settings.providers.openrouter?.enabled &&
+                                        (!availableModels.openrouter || availableModels.openrouter.length === 0);
+
+            const needsOllamaModels = settings.providers.ollama?.enabled &&
+                                    (!availableModels.ollama || availableModels.ollama.length === 0);
+
+            // Try to initialize missing models
+            if (needsOpenRouterModels) {
               console.log('ModelContext: OpenRouter is enabled but no models loaded, trying to initialize again...');
               initializeOpenRouterModels();
+            }
+
+            if (needsOllamaModels) {
+              console.log('ModelContext: Ollama is enabled but no models loaded, trying to fetch directly...');
+              try {
+                const ollamaProvider = createProvider('ollama', settings);
+                ollamaProvider.listModels()
+                  .then(models => {
+                    if (models && models.length > 0) {
+                      console.log(`ModelContext: Successfully fetched ${models.length} Ollama models directly`);
+                      // Update availableModels with the fetched models
+                      setAvailableModels(prev => ({
+                        ...prev,
+                        ollama: models
+                      }));
+
+                      // Update provider status
+                      setProviderStatus(prev => ({
+                        ...prev,
+                        ollama: { checked: true, running: true }
+                      }));
+                    }
+                  })
+                  .catch(err => {
+                    console.error('Error fetching Ollama models directly:', err);
+                  });
+              } catch (err) {
+                console.error('Error creating Ollama provider:', err);
+              }
             }
           })
           .catch(err => {
@@ -281,7 +315,7 @@ export const ModelProvider = ({ children }) => {
           });
       }, 100);
     }
-  }, [availableModels.openrouter, initializeOpenRouterModels, loadAllProviderModels, settings.providers.openrouter?.enabled]); // Add dependencies
+  }, [availableModels.openrouter, availableModels.ollama, initializeOpenRouterModels, loadAllProviderModels, settings.providers.openrouter?.enabled, settings.providers.ollama?.enabled, createProvider, settings]); // Add dependencies
 
   // Save agent models to localStorage when they change
   useEffect(() => {
@@ -400,6 +434,36 @@ export const ModelProvider = ({ children }) => {
       }
     }
 
+    // Special handling for Ollama - try to fetch models directly if enabled
+    if (settings.providers.ollama?.enabled) {
+      console.log('ModelContext: Ollama is enabled, attempting to fetch models directly');
+      try {
+        const ollamaProvider = createProvider('ollama', settings);
+        ollamaProvider.listModels()
+          .then(models => {
+            if (models && models.length > 0) {
+              console.log(`ModelContext: Successfully fetched ${models.length} Ollama models directly`);
+              // Update availableModels with the fetched models
+              setAvailableModels(prev => ({
+                ...prev,
+                ollama: models
+              }));
+
+              // Update provider status
+              setProviderStatus(prev => ({
+                ...prev,
+                ollama: { checked: true, running: true }
+              }));
+            }
+          })
+          .catch(err => {
+            console.error('Error fetching Ollama models directly:', err);
+          });
+      } catch (err) {
+        console.error('Error creating Ollama provider:', err);
+      }
+    }
+
     // Then call loadAllProviderModels and return the promise
     return loadAllProviderModels()
       .then(() => {
@@ -424,7 +488,7 @@ export const ModelProvider = ({ children }) => {
 
         return false;
       });
-  }, [loadAllProviderModels, isLoading, initializeOpenRouterModels, availableModels.openrouter, settings.providers.openrouter?.enabled, createProvider, settings]);
+  }, [loadAllProviderModels, isLoading, initializeOpenRouterModels, availableModels.openrouter, availableModels.ollama, settings.providers.openrouter?.enabled, settings.providers.ollama?.enabled, createProvider, settings]);
 
   // Context value
   const value = {

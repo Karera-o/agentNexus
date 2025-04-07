@@ -23,10 +23,15 @@ const ModelSelector = ({ selectedModel, onModelSelect, agentColor }) => {
       setSelectionStep('provider');
       setSelectedProvider(null);
     } else {
-      // When opening the dropdown, check if OpenRouter models need to be loaded
-      if (settings.providers.openrouter?.enabled &&
-          (!availableModels.openrouter || availableModels.openrouter.length === 0)) {
-        console.log('ModelSelector: Opening dropdown and OpenRouter is enabled but no models found, refreshing...');
+      // When opening the dropdown, check if any models need to be loaded
+      const needsOpenRouterModels = settings.providers.openrouter?.enabled &&
+                                  (!availableModels.openrouter || availableModels.openrouter.length === 0);
+
+      const needsOllamaModels = settings.providers.ollama?.enabled &&
+                              (!availableModels.ollama || availableModels.ollama.length === 0);
+
+      if (needsOpenRouterModels || needsOllamaModels) {
+        console.log('ModelSelector: Opening dropdown and some models are missing, refreshing...');
         refreshAllModels();
       }
     }
@@ -44,29 +49,82 @@ const ModelSelector = ({ selectedModel, onModelSelect, agentColor }) => {
 
   // Effect to initialize models when the component mounts
   useEffect(() => {
-    // If OpenRouter is enabled but we don't have models, fetch them directly from the API
-    if (settings.providers.openrouter?.enabled &&
-        (!availableModels.openrouter || availableModels.openrouter.length === 0)) {
-      console.log('ModelSelector: OpenRouter is enabled but no models found, fetching directly from API...');
+    // Check for both OpenRouter and Ollama models
+    const needsOpenRouterModels = settings.providers.openrouter?.enabled &&
+                                (!availableModels.openrouter || availableModels.openrouter.length === 0);
 
-      // Get the API key from settings or environment variables
-      const apiKey = settings.providers.openrouter?.apiKey || process.env.NEXT_PUBLIC_OPENROUTER_API_KEY || '';
+    const needsOllamaModels = settings.providers.ollama?.enabled &&
+                            (!availableModels.ollama || availableModels.ollama.length === 0);
 
-      if (apiKey) {
-        console.log('ModelSelector: API key found, fetching OpenRouter models...');
+    // If we need to fetch models for either provider, do it
+    if (needsOpenRouterModels || needsOllamaModels) {
+      console.log('ModelSelector: Some models are missing, fetching them...');
 
-        // Create headers
-        const headers = {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`,
-          'HTTP-Referer': typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000',
-          'X-Title': 'Dev Agent App'
-        };
+      // Fetch OpenRouter models if needed
+      if (needsOpenRouterModels) {
+        console.log('ModelSelector: OpenRouter is enabled but no models found, fetching directly from API...');
 
-        // Fetch models directly from the API
-        fetch('https://openrouter.ai/api/v1/models', {
+        // Get the API key from settings or environment variables
+        const apiKey = settings.providers.openrouter?.apiKey || process.env.NEXT_PUBLIC_OPENROUTER_API_KEY || '';
+
+        if (apiKey) {
+          console.log('ModelSelector: API key found, fetching OpenRouter models...');
+
+          // Create headers
+          const headers = {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`,
+            'HTTP-Referer': typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000',
+            'X-Title': 'Dev Agent App'
+          };
+
+          // Fetch models directly from the API
+          fetch('https://openrouter.ai/api/v1/models', {
+            method: 'GET',
+            headers: headers
+          })
+          .then(response => {
+            if (!response.ok) {
+              throw new Error(`API Error (${response.status})`);
+            }
+            return response.json();
+          })
+          .then(data => {
+            console.log(`ModelSelector: Successfully fetched ${data.data?.length || 0} OpenRouter models`);
+
+            if (data.data && data.data.length > 0) {
+              // Update settings with the models
+              const settingsModels = data.data.map(model => ({
+                id: model.id,
+                name: model.name || model.id,
+                description: model.description || ''
+              }));
+
+              // Update the models in settings context if the global function exists
+              if (window.updateOpenRouterModelsInSettings) {
+                window.updateOpenRouterModelsInSettings(settingsModels);
+              }
+            }
+          })
+          .catch(error => {
+            console.error('Error fetching OpenRouter models:', error);
+          });
+        }
+      }
+
+      // Fetch Ollama models if needed
+      if (needsOllamaModels) {
+        console.log('ModelSelector: Ollama is enabled but no models found, fetching directly from API...');
+
+        // Get the Ollama API URL from settings
+        const ollamaUrl = settings.providers.ollama?.baseUrl || 'http://localhost:11434/api';
+
+        // Fetch models directly from the Ollama API
+        fetch(`${ollamaUrl}/tags`, {
           method: 'GET',
-          headers: headers
+          headers: {
+            'Content-Type': 'application/json'
+          }
         })
         .then(response => {
           if (!response.ok) {
@@ -75,36 +133,37 @@ const ModelSelector = ({ selectedModel, onModelSelect, agentColor }) => {
           return response.json();
         })
         .then(data => {
-          console.log(`ModelSelector: Successfully fetched ${data.data?.length || 0} OpenRouter models`);
+          const models = data.models || [];
+          console.log(`ModelSelector: Successfully fetched ${models.length} Ollama models`);
 
-          if (data.data && data.data.length > 0) {
-            // Update settings with the models
-            const settingsModels = data.data.map(model => ({
-              id: model.id,
-              name: model.name || model.id,
-              description: model.description || ''
+          if (models.length > 0) {
+            // Update availableModels directly
+            setAvailableModels(prev => ({
+              ...prev,
+              ollama: models
             }));
 
-            // Update the models in settings context if the global function exists
-            if (window.updateOpenRouterModelsInSettings) {
-              window.updateOpenRouterModelsInSettings(settingsModels);
-            }
-
-            // Refresh all models to update the UI
-            refreshAllModels();
+            // Update provider status
+            setProviderStatus(prev => ({
+              ...prev,
+              ollama: { checked: true, running: true }
+            }));
           }
         })
         .catch(error => {
-          console.error('Error fetching OpenRouter models:', error);
-          // If direct fetch fails, try the normal refresh
-          refreshAllModels();
+          console.error('Error fetching Ollama models:', error);
         });
-      } else {
-        // If no API key, just try the normal refresh
-        refreshAllModels();
       }
+
+      // Refresh all models to update the UI after direct fetching
+      setTimeout(() => {
+        console.log('ModelSelector: Refreshing all models after direct fetching...');
+        refreshAllModels();
+      }, 500);
     }
-  }, [settings.providers.openrouter?.enabled, settings.providers.openrouter?.apiKey, availableModels.openrouter, refreshAllModels]);
+  }, [settings.providers.openrouter?.enabled, settings.providers.openrouter?.apiKey,
+      settings.providers.ollama?.enabled, settings.providers.ollama?.baseUrl,
+      availableModels.openrouter, availableModels.ollama, refreshAllModels]);
 
   // Handle provider selection
   const handleProviderSelect = (provider) => {

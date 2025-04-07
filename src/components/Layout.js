@@ -125,17 +125,28 @@ const Layout = () => {
   // Create a ModelInitializer component to ensure models are loaded
   const ModelInitializer = () => {
     const { settings } = useSettings();
-    const { refreshAllModels, availableModels } = useModelContext();
+    const { refreshAllModels, availableModels, providerStatus } = useModelContext();
 
     // Effect to initialize models when the app starts
     useEffect(() => {
-      // Check if we have OpenRouter models in settings but not in availableModels
-      if (settings.providers.openrouter?.models?.length > 0 &&
-          (!availableModels.openrouter || availableModels.openrouter.length === 0)) {
-        console.log('Layout: OpenRouter models found in settings but not in availableModels, refreshing...');
+      // Check if we need to load models for any provider
+      const needsOpenRouterModels = settings.providers.openrouter?.enabled &&
+                                  (!availableModels.openrouter || availableModels.openrouter.length === 0);
+
+      const needsOllamaModels = settings.providers.ollama?.enabled &&
+                              (!availableModels.ollama || availableModels.ollama.length === 0);
+
+      if (needsOpenRouterModels || needsOllamaModels) {
+        console.log('Layout: Some models are missing, refreshing all models...');
         refreshAllModels();
       }
-    }, [settings.providers.openrouter?.models, availableModels.openrouter, refreshAllModels]);
+    }, [
+      settings.providers.openrouter?.enabled,
+      settings.providers.ollama?.enabled,
+      availableModels.openrouter,
+      availableModels.ollama,
+      refreshAllModels
+    ]);
 
     return null; // This component doesn't render anything
   };
