@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useState, useContext, useEffect, useCallback, useRef } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useSettings } from './SettingsContext';
 import { createProvider, getAllProviders } from '../services/providers/provider-factory';
 
@@ -18,6 +18,11 @@ export const ModelProvider = ({ children }) => {
   // Store selected model for each project-agent combination with provider information
   // Format: { 'projectId-agentId': { provider: 'provider', model: 'model' } }
   const [agentModels, setAgentModels] = useState({});
+
+  // Debounce mechanism to prevent rapid successive calls to refreshAllModels
+  const lastRefreshTimeRef = useRef(0);
+  const refreshInProgressRef = useRef(false);
+  const DEBOUNCE_INTERVAL = 2000; // 2 seconds
 
   // Define loadAllProviderModels as a memoized function to be reused
   const loadAllProviderModels = useCallback(async () => {
@@ -388,9 +393,29 @@ export const ModelProvider = ({ children }) => {
 
   // Refresh models for all providers
   const refreshAllModels = useCallback(() => {
+    // Implement debounce to prevent rapid successive calls
+    const now = Date.now();
+    const timeSinceLastRefresh = now - lastRefreshTimeRef.current;
+
+    // If a refresh is already in progress or we've refreshed recently, skip this call
+    if (refreshInProgressRef.current) {
+      console.log('Model refresh already in progress, skipping');
+      return Promise.resolve(false);
+    }
+
+    if (timeSinceLastRefresh < DEBOUNCE_INTERVAL) {
+      console.log(`Skipping model refresh, last refresh was ${timeSinceLastRefresh}ms ago`);
+      return Promise.resolve(false);
+    }
+
+    // Update the last refresh time
+    lastRefreshTimeRef.current = now;
+    refreshInProgressRef.current = true;
+
     // Prevent multiple simultaneous refreshes
     if (isLoading) {
       console.log('Already loading models, skipping refresh');
+      refreshInProgressRef.current = false;
       return Promise.resolve(false);
     }
 
@@ -477,6 +502,8 @@ export const ModelProvider = ({ children }) => {
           initializeOpenRouterModels();
         }
 
+        // Reset the refresh in progress flag
+        refreshInProgressRef.current = false;
         return true;
       })
       .catch(error => {
@@ -486,6 +513,8 @@ export const ModelProvider = ({ children }) => {
         console.log('Refresh failed, trying to initialize OpenRouter models from settings');
         initializeOpenRouterModels();
 
+        // Reset the refresh in progress flag even on error
+        refreshInProgressRef.current = false;
         return false;
       });
   }, [loadAllProviderModels, isLoading, initializeOpenRouterModels, availableModels.openrouter, availableModels.ollama, settings.providers.openrouter?.enabled, settings.providers.ollama?.enabled, settings]);
