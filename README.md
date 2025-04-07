@@ -1,6 +1,6 @@
-# Dev Agent App
+# AgentNexus
 
-An AI-powered development assistant with multiple specialized agents for software development and research tasks.
+AgentNexus is an AI-powered development assistant with multiple specialized agents for software development and research tasks. It provides a unified interface to interact with various AI model providers and helps streamline your development and research workflows.
 
 ## Features
 
@@ -20,10 +20,13 @@ An AI-powered development assistant with multiple specialized agents for softwar
 
 ### Installation
 
-1. Clone the repository
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/Karera-o/agentNexus.git
+   cd agentNexus
+   ```
 2. Install dependencies:
    ```bash
-   cd dev-agent-app
    npm install
    # or
    yarn install
@@ -39,7 +42,7 @@ An AI-powered development assistant with multiple specialized agents for softwar
    # or
    yarn dev
    ```
-6. Open [http://localhost:3000](http://localhost:3000) in your browser
+6. Open [http://localhost:3002](http://localhost:3002) in your browser (or the port shown in your terminal)
 
 ## API Keys
 
@@ -90,6 +93,13 @@ Each project has a dedicated storage location for files and chat history:
 
 - Software projects: `~/Documents/Personal/Agents/Software/{Project Name}/`
 - Research projects: `~/Documents/Personal/Agents/Research/{Project Name}/`
+
+## Recent Improvements
+
+- **Automatic Model Loading**: OpenRouter and Ollama models are now loaded automatically when the application starts
+- **Enhanced UI**: Improved aesthetics with consistent design language
+- **Better Model Selection**: Two-step model selection process (provider first, then model)
+- **Project Organization**: Clear separation between software and research projects
 
 ## Learn More
 
