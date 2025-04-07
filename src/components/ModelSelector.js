@@ -170,9 +170,9 @@ const ModelSelector = ({ selectedModel, onModelSelect, agentColor }) => {
     setSearchTerm(''); // Clear search when switching to model selection
 
     // Automatically fetch models for OpenRouter if needed
-    if (provider === 'openrouter') {
-      console.log('Automatically fetching OpenRouter models...');
-      // Always refresh models when selecting OpenRouter
+    if (provider === 'openrouter' && (!availableModels.openrouter || availableModels.openrouter.length === 0)) {
+      console.log('Automatically fetching OpenRouter models because they are missing...');
+      // Only refresh models when they're not already loaded
       refreshAllModels();
     }
   };
