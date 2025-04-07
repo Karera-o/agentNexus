@@ -155,11 +155,9 @@ const ModelSelector = ({ selectedModel, onModelSelect, agentColor }) => {
         });
       }
 
-      // Refresh all models to update the UI after direct fetching
-      setTimeout(() => {
-        console.log('ModelSelector: Refreshing all models after direct fetching...');
-        refreshAllModels();
-      }, 500);
+      // We'll let the models we just fetched directly be saved to the state
+      // No need to call refreshAllModels() here as it would create an infinite loop
+      // The models will be available in the state after the direct fetch completes
     }
   }, [settings.providers.openrouter?.enabled, settings.providers.openrouter?.apiKey,
       settings.providers.ollama?.enabled, settings.providers.ollama?.baseUrl,
