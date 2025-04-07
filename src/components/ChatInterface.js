@@ -20,7 +20,9 @@ const ChatInterface = ({ activeAgent }) => {
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [streamedResponse, setStreamedResponse] = useState('');
+  const [isAtBottom, setIsAtBottom] = useState(true);
   const messagesEndRef = useRef(null);
+  const chatContainerRef = useRef(null);
 
   // Get contexts
   const { isOllamaAvailable, getModelForAgent, setModelForAgent } = useModelContext();
@@ -150,10 +152,32 @@ const ChatInterface = ({ activeAgent }) => {
     }
   }, [messages, activeAgent, activeProject, getAgentInfo]);
 
-  // Auto-scroll to bottom when messages change
+  // Auto-scroll to bottom when messages change, but only if we're already at the bottom
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    if (isAtBottom || messages.length === 0 || messages[messages.length - 1].sender === 'user' ||
+        (messages[messages.length - 1].sender === 'agent' && messages[messages.length - 1].isStreaming)) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages, isAtBottom]);
+
+  // Function to check if user is at bottom of chat
+  const handleScroll = useCallback(() => {
+    if (!chatContainerRef.current) return;
+
+    const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
+    // Consider "at bottom" if within 100px of the bottom
+    const isBottom = scrollHeight - scrollTop - clientHeight < 100;
+    setIsAtBottom(isBottom);
+  }, []);
+
+  // Add scroll event listener
+  useEffect(() => {
+    const chatContainer = chatContainerRef.current;
+    if (chatContainer) {
+      chatContainer.addEventListener('scroll', handleScroll);
+      return () => chatContainer.removeEventListener('scroll', handleScroll);
+    }
+  }, [handleScroll]);
 
   // Check for ongoing generations when the component mounts or when the active project/agent changes
   useEffect(() => {
@@ -455,7 +479,7 @@ const ChatInterface = ({ activeAgent }) => {
       </div>
 
       {/* Chat messages */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-gray-50 dark:bg-gray-900">
+      <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-6 space-y-6 bg-gray-50 dark:bg-gray-900">
         {messages.map((message, index) => (
           <div
             key={message.id}
