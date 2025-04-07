@@ -78,14 +78,14 @@ Alternatively, you can enter your API keys in the Settings panel within the appl
 The application supports two types of projects:
 
 1. **Software Projects**: Full suite of specialized agents for software development tasks
-   - Requirements Analyst
-   - Software Documentor
-   - System Designer
-   - DB Designer
-   - UI Architect
+   - **Requirements Analyst**: Helps gather, analyze, and refine project requirements, creating detailed specifications and user stories
+   - **Software Documentor**: Creates comprehensive documentation for code, APIs, and system architecture
+   - **System Designer**: Designs overall system architecture, component interactions, and technical specifications
+   - **DB Designer**: Designs database schemas, relationships, and optimizes data structures
+   - **UI Architect**: Provides UI/UX design guidance, wireframes, and aesthetic recommendations
 
 2. **Research Projects**: Simplified interface with a dedicated research assistant
-   - Research Assistant for analyzing papers and answering questions
+   - **Research Assistant**: Analyzes research papers, extracts key information, answers questions, and helps synthesize findings into coherent summaries
 
 ## Project Storage
 
