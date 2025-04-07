@@ -144,73 +144,73 @@ const SettingsModal = () => {
   if (!isSettingsOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 animate-fade-in">
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+    <div className="fixed inset-0 bg-black bg-opacity-30 z-50 flex items-center justify-center p-4 animate-fade-in">
+      <div className="bg-white dark:bg-gray-900 rounded-md shadow-md w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col border border-gray-200 dark:border-gray-700">
         {/* Header */}
-        <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-          <h2 className="text-xl font-semibold flex items-center">
-            <FaCog className="mr-2" /> Settings
+        <div className="p-3 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+          <h2 className="text-base font-medium flex items-center text-gray-900 dark:text-white">
+            <FaCog className="mr-1.5 text-gray-500 dark:text-gray-400" /> Settings
           </h2>
           <button
             onClick={() => setIsSettingsOpen(false)}
-            className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-500 dark:text-gray-400"
           >
-            <FaTimes />
+            <FaTimes className="text-sm" />
           </button>
         </div>
 
         {/* Content */}
         <div className="flex flex-1 overflow-hidden">
           {/* Sidebar */}
-          <div className="w-48 border-r border-gray-200 dark:border-gray-700 p-4 overflow-y-auto">
+          <div className="w-40 border-r border-gray-200 dark:border-gray-700 p-2 overflow-y-auto">
             <nav className="space-y-1">
               <button
                 onClick={() => setActiveTab('general')}
-                className={`w-full text-left px-3 py-2 rounded-lg flex items-center ${
+                className={`w-full text-left px-2 py-1.5 rounded-md flex items-center text-sm ${
                   activeTab === 'general'
-                    ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300'
-                    : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                    ? 'bg-primary/10 text-primary dark:text-primary-light border-l-2 border-primary'
+                    : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300'
                 }`}
               >
-                <FaCog className="mr-2" /> General
+                <FaCog className="mr-1.5 text-xs" /> General
               </button>
               <button
                 onClick={() => setActiveTab('providers')}
-                className={`w-full text-left px-3 py-2 rounded-lg flex items-center ${
+                className={`w-full text-left px-2 py-1.5 rounded-md flex items-center text-sm ${
                   activeTab === 'providers'
-                    ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300'
-                    : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                    ? 'bg-primary/10 text-primary dark:text-primary-light border-l-2 border-primary'
+                    : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300'
                 }`}
               >
-                <FaRobot className="mr-2" /> Model Providers
+                <FaRobot className="mr-1.5 text-xs" /> Model Providers
               </button>
               <button
                 onClick={() => setActiveTab('about')}
-                className={`w-full text-left px-3 py-2 rounded-lg flex items-center ${
+                className={`w-full text-left px-2 py-1.5 rounded-md flex items-center text-sm ${
                   activeTab === 'about'
-                    ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300'
-                    : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                    ? 'bg-primary/10 text-primary dark:text-primary-light border-l-2 border-primary'
+                    : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300'
                 }`}
               >
-                <FaInfoCircle className="mr-2" /> About
+                <FaInfoCircle className="mr-1.5 text-xs" /> About
               </button>
             </nav>
           </div>
 
           {/* Main content */}
-          <div className="flex-1 p-6 overflow-y-auto">
+          <div className="flex-1 p-4 overflow-y-auto">
             {activeTab === 'general' && (
-              <div className="space-y-6">
-                <h3 className="text-lg font-medium">General Settings</h3>
+              <div className="space-y-4">
+                <h3 className="text-base font-medium text-gray-900 dark:text-white">General Settings</h3>
 
-                <div className="space-y-4">
+                <div className="space-y-3">
                   {/* Default Model Provider */}
                   <div>
-                    <label className="block text-sm font-medium mb-2">Default Model Provider</label>
+                    <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Default Model Provider</label>
                     <select
                       value={settings.modelProvider}
                       onChange={(e) => updateSetting('modelProvider', e.target.value)}
-                      className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700"
+                      className="w-full p-1.5 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-sm"
                     >
                       {Object.entries(settings.providers)
                         .filter(([_, providerSettings]) => providerSettings.enabled)
@@ -225,11 +225,11 @@ const SettingsModal = () => {
 
                   {/* Theme */}
                   <div>
-                    <label className="block text-sm font-medium mb-2">Theme</label>
+                    <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Theme</label>
                     <select
                       value={settings.theme}
                       onChange={(e) => updateSetting('theme', e.target.value)}
-                      className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700"
+                      className="w-full p-1.5 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-sm"
                     >
                       <option value="light">Light</option>
                       <option value="dark">Dark</option>
@@ -239,7 +239,7 @@ const SettingsModal = () => {
 
                   {/* Message History */}
                   <div>
-                    <label className="block text-sm font-medium mb-2">
+                    <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
                       Message History Limit
                       <span className="text-xs text-gray-500 ml-2">(Number of messages to keep)</span>
                     </label>
@@ -249,22 +249,22 @@ const SettingsModal = () => {
                       max="500"
                       value={settings.messageHistory}
                       onChange={(e) => updateSetting('messageHistory', parseInt(e.target.value))}
-                      className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700"
+                      className="w-full p-1.5 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-sm"
                     />
                   </div>
 
                   {/* Stream Responses */}
                   <div className="flex items-center justify-between">
-                    <label className="text-sm font-medium">Stream Responses</label>
+                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Stream Responses</label>
                     <button
                       onClick={() => updateSetting('streamResponses', !settings.streamResponses)}
-                      className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors focus:outline-none ${
-                        settings.streamResponses ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'
+                      className={`relative inline-flex items-center h-5 rounded-full w-9 transition-colors focus:outline-none ${
+                        settings.streamResponses ? 'bg-primary' : 'bg-gray-300 dark:bg-gray-600'
                       }`}
                     >
                       <span
-                        className={`inline-block w-4 h-4 transform bg-white rounded-full transition-transform ${
-                          settings.streamResponses ? 'translate-x-6' : 'translate-x-1'
+                        className={`inline-block w-3 h-3 transform bg-white rounded-full transition-transform ${
+                          settings.streamResponses ? 'translate-x-5' : 'translate-x-1'
                         }`}
                       />
                     </button>
@@ -272,16 +272,16 @@ const SettingsModal = () => {
 
                   {/* Debug Mode */}
                   <div className="flex items-center justify-between">
-                    <label className="text-sm font-medium">Debug Mode</label>
+                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Debug Mode</label>
                     <button
                       onClick={() => updateSetting('debugMode', !settings.debugMode)}
-                      className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors focus:outline-none ${
-                        settings.debugMode ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'
+                      className={`relative inline-flex items-center h-5 rounded-full w-9 transition-colors focus:outline-none ${
+                        settings.debugMode ? 'bg-primary' : 'bg-gray-300 dark:bg-gray-600'
                       }`}
                     >
                       <span
-                        className={`inline-block w-4 h-4 transform bg-white rounded-full transition-transform ${
-                          settings.debugMode ? 'translate-x-6' : 'translate-x-1'
+                        className={`inline-block w-3 h-3 transform bg-white rounded-full transition-transform ${
+                          settings.debugMode ? 'translate-x-5' : 'translate-x-1'
                         }`}
                       />
                     </button>
@@ -289,31 +289,31 @@ const SettingsModal = () => {
                 </div>
 
                 {/* Reset Button */}
-                <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+                <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
                   {/* Environment Variables Debugger */}
                   <EnvDebugger />
 
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-2 mt-2">
                     <button
-                      className="px-4 py-2 bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors flex items-center"
+                      className="px-3 py-1.5 bg-primary/10 text-primary dark:text-primary-light rounded-md hover:bg-primary/20 transition-colors flex items-center text-sm"
                       onClick={() => {
                         handleSaveApiKeys();
                       }}
                     >
-                      <FaSave className="mr-2" /> Save to Browser
+                      <FaSave className="mr-1.5 text-xs" /> Save to Browser
                     </button>
                     <button
-                      className="px-4 py-2 bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400 rounded-lg hover:bg-green-200 dark:hover:bg-green-900/50 transition-colors flex items-center"
+                      className="px-3 py-1.5 bg-secondary/10 text-secondary dark:text-secondary-light rounded-md hover:bg-secondary/20 transition-colors flex items-center text-sm"
                       onClick={() => {
                         handleSaveApiKeysToEnv();
                       }}
                       disabled={testingConnection}
                     >
-                      <FaKey className="mr-2" /> {testingConnection ? 'Saving...' : 'Save to .env File'}
+                      <FaKey className="mr-1.5 text-xs" /> {testingConnection ? 'Saving...' : 'Save to .env File'}
                     </button>
                     <button
                       onClick={resetSettings}
-                      className="px-4 py-2 bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors"
+                      className="px-3 py-1.5 bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 rounded-md hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors text-sm"
                     >
                       Reset to Default Settings
                     </button>
@@ -323,8 +323,8 @@ const SettingsModal = () => {
             )}
 
             {activeTab === 'providers' && (
-              <div className="space-y-6">
-                <h3 className="text-lg font-medium">Model Providers</h3>
+              <div className="space-y-4">
+                <h3 className="text-base font-medium text-gray-900 dark:text-white">Model Providers</h3>
 
                 {/* Ollama */}
                 {settings.providers.ollama && (
@@ -336,13 +336,13 @@ const SettingsModal = () => {
                       </div>
                       <button
                         onClick={() => updateProviderSetting('ollama', 'enabled', !settings.providers.ollama.enabled)}
-                        className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors focus:outline-none ${
-                          settings.providers.ollama.enabled ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'
+                        className={`relative inline-flex items-center h-5 rounded-full w-9 transition-colors focus:outline-none ${
+                          settings.providers.ollama.enabled ? 'bg-primary' : 'bg-gray-300 dark:bg-gray-600'
                         }`}
                       >
                         <span
-                          className={`inline-block w-4 h-4 transform bg-white rounded-full transition-transform ${
-                            settings.providers.ollama.enabled ? 'translate-x-6' : 'translate-x-1'
+                          className={`inline-block w-3 h-3 transform bg-white rounded-full transition-transform ${
+                            settings.providers.ollama.enabled ? 'translate-x-5' : 'translate-x-1'
                           }`}
                         />
                       </button>
@@ -362,7 +362,7 @@ const SettingsModal = () => {
                             <button
                               onClick={() => checkProviderStatus('ollama')}
                               disabled={testingConnection}
-                              className="px-4 py-2 bg-blue-600 text-white rounded-r-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400"
+                              className="px-3 py-1.5 bg-primary text-white rounded-r-md hover:bg-primary-dark transition-colors disabled:bg-gray-400 text-sm"
                             >
                               {testingConnection ? 'Testing...' : 'Test'}
                             </button>
@@ -594,7 +594,7 @@ const SettingsModal = () => {
                       <button
                         onClick={() => updateProviderSetting('deepseek', 'enabled', !settings.providers.deepseek.enabled)}
                         className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors focus:outline-none ${
-                          settings.providers.deepseek.enabled ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'
+                          settings.providers.deepseek.enabled ? 'bg-primary' : 'bg-gray-300 dark:bg-gray-600'
                         }`}
                       >
                         <span
@@ -705,7 +705,7 @@ const SettingsModal = () => {
                       <button
                         onClick={() => updateProviderSetting('openrouter', 'enabled', !settings.providers.openrouter.enabled)}
                         className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors focus:outline-none ${
-                          settings.providers.openrouter.enabled ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'
+                          settings.providers.openrouter.enabled ? 'bg-primary' : 'bg-gray-300 dark:bg-gray-600'
                         }`}
                       >
                         <span
@@ -734,7 +734,7 @@ const SettingsModal = () => {
                             <button
                               onClick={() => checkProviderStatus('openrouter')}
                               disabled={testingConnection}
-                              className="px-4 py-2 bg-blue-600 text-white rounded-r-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400"
+                              className="px-3 py-1.5 bg-primary text-white rounded-r-md hover:bg-primary-dark transition-colors disabled:bg-gray-400 text-sm"
                             >
                               {testingConnection ? 'Testing...' : 'Test'}
                             </button>
@@ -857,7 +857,7 @@ const SettingsModal = () => {
                       <button
                         onClick={() => updateProviderSetting('requesty', 'enabled', !settings.providers.requesty.enabled)}
                         className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors focus:outline-none ${
-                          settings.providers.requesty.enabled ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'
+                          settings.providers.requesty.enabled ? 'bg-primary' : 'bg-gray-300 dark:bg-gray-600'
                         }`}
                       >
                         <span
@@ -930,26 +930,26 @@ const SettingsModal = () => {
             )}
 
             {activeTab === 'about' && (
-              <div className="space-y-6">
-                <h3 className="text-lg font-medium">About Dev Agent</h3>
+              <div className="space-y-4">
+                <h3 className="text-base font-medium text-gray-900 dark:text-white">About AgentNexus</h3>
 
-                <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                  <h4 className="font-medium mb-2">Version</h4>
-                  <p>1.0.0</p>
+                <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700">
+                  <h4 className="text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Version</h4>
+                  <p className="text-sm">1.0.0</p>
                 </div>
 
-                <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                  <h4 className="font-medium mb-2">Description</h4>
+                <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700">
+                  <h4 className="text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Description</h4>
                   <p>
-                    Dev Agent is a personal multi-agent assistant for software development tasks.
+                    AgentNexus is a central hub for software and research agents designed to help with various tasks.
                     It provides specialized AI agents for requirements analysis, documentation,
                     system design, database design, and UI architecture.
                   </p>
                 </div>
 
-                <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                  <h4 className="font-medium mb-2">Features</h4>
-                  <ul className="list-disc list-inside space-y-1">
+                <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700">
+                  <h4 className="text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">Features</h4>
+                  <ul className="list-disc list-inside space-y-1 text-sm text-gray-600 dark:text-gray-400">
                     <li>Multiple specialized AI agents</li>
                     <li>Support for multiple model providers</li>
                     <li>File upload and analysis</li>
@@ -966,7 +966,7 @@ const SettingsModal = () => {
         <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex justify-end">
           <button
             onClick={() => setIsSettingsOpen(false)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="px-3 py-1.5 bg-primary text-white rounded-md hover:bg-primary-dark transition-colors text-sm"
           >
             Close
           </button>
@@ -1009,7 +1009,7 @@ const SettingsModal = () => {
             <div className="flex justify-end space-x-2">
               <button
                 onClick={copyInstructionsToClipboard}
-                className="px-4 py-2 bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors flex items-center"
+                className="px-4 py-2 bg-primary/10 text-primary dark:bg-primary-dark/30 dark:text-blue-400 rounded-lg hover:bg-primary/20 dark:hover:bg-blue-900/50 transition-colors flex items-center"
               >
                 <FaCopy className="mr-2" /> Copy API Keys
               </button>

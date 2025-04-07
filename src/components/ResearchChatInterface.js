@@ -181,7 +181,7 @@ const ResearchChatInterface = () => {
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center">
-          <div className="p-2 rounded-lg bg-gradient-to-r from-purple-500 to-purple-600 text-white mr-3">
+          <div className="p-2 rounded-md bg-secondary text-white mr-3">
             <FaFlask />
           </div>
           <div>
@@ -201,7 +201,7 @@ const ResearchChatInterface = () => {
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center p-6">
-            <div className="p-3 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-300 mb-4">
+            <div className="p-3 rounded-md bg-secondary/10 text-secondary dark:text-secondary-light mb-4">
               <FaFlask className="text-2xl" />
             </div>
             <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-2">Research Assistant</h3>
@@ -248,18 +248,18 @@ const ResearchChatInterface = () => {
               <div
                 className={`max-w-[80%] rounded-lg p-4 ${
                   message.role === 'user'
-                    ? 'bg-purple-100 dark:bg-purple-900/30 text-gray-800 dark:text-gray-200'
+                    ? 'bg-secondary/10 text-gray-800 dark:text-gray-200'
                     : message.role === 'system'
-                      ? 'bg-yellow-100 dark:bg-yellow-900/30 text-gray-800 dark:text-gray-200'
+                      ? 'bg-gray-100 dark:bg-gray-800/50 text-gray-800 dark:text-gray-200'
                       : 'bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700'
                 }`}
               >
                 <div className="flex items-center mb-2">
                   <div className={`p-1.5 rounded-md mr-2 ${
                     message.role === 'user'
-                      ? 'bg-purple-200 dark:bg-purple-800 text-purple-700 dark:text-purple-300'
+                      ? 'bg-secondary/20 text-secondary dark:text-secondary-light'
                       : message.role === 'system'
-                        ? 'bg-yellow-200 dark:bg-yellow-800 text-yellow-700 dark:text-yellow-300'
+                        ? 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
                         : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
                   }`}>
                     {message.role === 'user' ? <FaUser /> : message.role === 'system' ? <FaRobot /> : <FaFlask />}
@@ -368,10 +368,10 @@ const ResearchChatInterface = () => {
 
           <button
             type="submit"
-            className={`p-3 rounded-lg ${
+            className={`p-3 rounded-md ${
               isGenerating
                 ? 'bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-400 cursor-not-allowed'
-                : 'bg-gradient-to-r from-purple-500 to-purple-600 text-white hover:from-purple-600 hover:to-purple-700'
+                : 'bg-secondary text-white hover:bg-secondary-dark transition-colors'
             }`}
             disabled={isGenerating}
           >

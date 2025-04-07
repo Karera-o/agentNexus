@@ -238,9 +238,9 @@ const ModelSelector = ({ selectedModel, onModelSelect, agentColor }) => {
       )}
       <button
         onClick={toggleDropdown}
-        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm ${
+        className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm ${
           isAnyProviderAvailable()
-            ? `bg-gradient-to-r ${agentColor} bg-opacity-10 text-gray-800 dark:text-white`
+            ? `bg-primary/10 text-gray-800 dark:text-white`
             : 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
         }`}
         disabled={!isAnyProviderAvailable()}
@@ -373,7 +373,7 @@ const ModelSelector = ({ selectedModel, onModelSelect, agentColor }) => {
                         onClick={() => handleModelSelect(selectedProvider, model.name)}
                         className={`w-full text-left px-3 ${selectedProvider === 'openrouter' ? 'py-1.5' : 'py-2'} rounded-md text-sm flex items-center justify-between mb-1 ${
                           selectedModel?.provider === selectedProvider && selectedModel?.model === model.name
-                            ? `bg-gradient-to-r ${agentColor} text-white`
+                            ? `bg-primary text-white`
                             : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200'
                         }`}
                       >

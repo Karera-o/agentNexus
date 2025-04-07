@@ -8,17 +8,17 @@ const WelcomeMessage = () => {
   const { activeProject, toggleProjectModal } = useProject();
   const isResearchProject = activeProject?.type === PROJECT_TYPES.RESEARCH;
   return (
-    <div className="flex flex-col h-full overflow-auto bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
+    <div className="flex flex-col h-full overflow-auto bg-white dark:bg-gray-900">
       {/* Hero section */}
-      <div className="flex flex-col items-center justify-center py-16 px-8 text-center">
+      <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
         <div className="animate-fade-in">
-          <div className="inline-block bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 p-3 rounded-2xl shadow-lg mb-6">
-            <FaBrain className="text-white text-3xl" />
+          <div className="inline-block bg-primary p-2 rounded-md shadow-sm mb-4">
+            <FaBrain className="text-white text-xl" />
           </div>
-          <h1 className="text-3xl md:text-4xl font-bold mb-4 bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400 bg-clip-text text-transparent">
-            Welcome to Dev Agent
+          <h1 className="text-2xl md:text-3xl font-bold mb-3 text-gray-900 dark:text-white">
+            Welcome to AgentNexus
           </h1>
-          <p className="text-base md:text-lg mb-4 max-w-2xl text-gray-600 dark:text-gray-300">
+          <p className="text-sm md:text-base mb-4 max-w-xl text-gray-600 dark:text-gray-300">
             {isResearchProject ? (
               <>Your personal AI assistant for research tasks. Upload documents and ask questions to analyze research materials.</>
             ) : (
@@ -27,22 +27,22 @@ const WelcomeMessage = () => {
           </p>
 
           {/* Project type indicator */}
-          <div className="mb-8 flex items-center justify-center">
-            <div className={`px-4 py-2 rounded-full ${isResearchProject ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-300' : 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-800 dark:text-indigo-300'} flex items-center`}>
+          <div className="mb-6 flex items-center justify-center">
+            <div className={`px-3 py-1.5 rounded-md ${isResearchProject ? 'bg-secondary/10 text-secondary dark:text-secondary-light' : 'bg-primary/10 text-primary dark:text-primary-light'} flex items-center text-sm border border-gray-200 dark:border-gray-700`}>
               {isResearchProject ? (
                 <>
-                  <FaFlask className="mr-2" />
+                  <FaFlask className="mr-1.5 text-xs" />
                   <span>Research Project: {activeProject?.name}</span>
                 </>
               ) : (
                 <>
-                  <FaFolder className="mr-2" />
+                  <FaFolder className="mr-1.5 text-xs" />
                   <span>Software Project: {activeProject?.name}</span>
                 </>
               )}
               <button
                 onClick={toggleProjectModal}
-                className="ml-3 text-xs underline hover:text-blue-600 dark:hover:text-blue-400"
+                className="ml-2 text-xs text-gray-500 dark:text-gray-400 hover:text-primary dark:hover:text-primary-light"
               >
                 Change
               </button>
@@ -50,12 +50,12 @@ const WelcomeMessage = () => {
           </div>
         </div>
 
-        <div className="w-full max-w-6xl">
-          <h2 className="text-xl font-semibold mb-8 text-gray-800 dark:text-gray-100 animate-fade-in" style={{animationDelay: '0.2s'}}>
+        <div className="w-full max-w-4xl">
+          <h2 className="text-lg font-medium mb-6 text-gray-800 dark:text-gray-100 animate-fade-in" style={{animationDelay: '0.2s'}}>
             {isResearchProject ? 'Research Assistant' : 'Choose your AI assistant'}
           </h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
             {isResearchProject ? (
               <AgentCard
                 icon={<FaFlask />}
@@ -107,50 +107,10 @@ const WelcomeMessage = () => {
         </div>
       </div>
 
-      {/* Features section */}
-      <div className="bg-gray-100 dark:bg-gray-800 py-16 px-8 animate-fade-in" style={{animationDelay: '0.8s'}}>
-        <div className="max-w-6xl mx-auto">
-          <h2 className="text-xl font-semibold mb-8 text-center text-gray-800 dark:text-gray-100">
-            Key Features
-          </h2>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            <FeatureCard
-              title="Chat Interface"
-              description="Interact with specialized AI agents through a conversational UI."
-            />
-            <FeatureCard
-              title="Ollama Integration"
-              description="Use your locally installed Ollama models with each specialized agent."
-            />
-            <FeatureCard
-              title="File Upload"
-              description="Upload documents, images, and code files for AI analysis and processing."
-            />
-            <FeatureCard
-              title="Local Storage"
-              description="Save and load your projects locally for privacy and convenience."
-            />
-            <FeatureCard
-              title="Export/Import"
-              description="Export your data in various formats including JSON, Markdown, and PDF."
-            />
-            <FeatureCard
-              title="Multi-Agent System"
-              description="Specialized agents for different aspects of software development."
-            />
-            <FeatureCard
-              title="Plugin Support"
-              description="Extend functionality with custom agents and tools."
-            />
-          </div>
-        </div>
-      </div>
-
       {/* Footer */}
-      <div className="bg-white dark:bg-gray-900 py-8 px-8 text-center text-gray-600 dark:text-gray-400 text-sm">
-        <p>Dev Agent - Version 1.0.0</p>
-        <p className="mt-2">© 2023 All Rights Reserved</p>
+      <div className="bg-white dark:bg-gray-900 py-6 px-6 text-center text-gray-500 dark:text-gray-400 text-xs">
+        <p>AgentNexus - Version 1.0.0</p>
+        <p className="mt-1">© 2023 All Rights Reserved</p>
       </div>
     </div>
   );
@@ -159,34 +119,24 @@ const WelcomeMessage = () => {
 const AgentCard = ({ icon, title, description, color, delay }) => {
   return (
     <div
-      className="bg-white dark:bg-gray-800 rounded-xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden group animate-fade-in"
+      className="bg-white dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700 hover:shadow-sm transition-all duration-300 overflow-hidden group animate-fade-in"
       style={{animationDelay: `${delay}s`}}
     >
-      <div className={`bg-gradient-to-r ${color} h-2 w-full`}></div>
-      <div className="p-6">
-        <div className="flex items-center mb-4">
-          <div className={`bg-gradient-to-r ${color} p-3 rounded-lg text-white text-xl`}>
+      <div className="p-4">
+        <div className="flex items-center mb-3">
+          <div className={`bg-primary/10 text-primary dark:text-primary-light p-2 rounded-md text-sm`}>
             {icon}
           </div>
-          <h3 className="text-base font-semibold ml-3 text-gray-800 dark:text-white">{title}</h3>
+          <h3 className="text-sm font-medium ml-2 text-gray-800 dark:text-white">{title}</h3>
         </div>
-        <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">{description}</p>
+        <p className="text-xs text-gray-600 dark:text-gray-300 mb-3">{description}</p>
         <div className="flex justify-end">
-          <button className="text-sm flex items-center text-gray-500 dark:text-gray-400 group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors">
+          <button className="text-xs flex items-center text-gray-500 dark:text-gray-400 group-hover:text-primary dark:group-hover:text-primary-light transition-colors">
             <span className="mr-1">Select</span>
-            <FaArrowRight className="transform group-hover:translate-x-1 transition-transform" />
+            <FaArrowRight className="transform group-hover:translate-x-1 transition-transform text-xs" />
           </button>
         </div>
       </div>
-    </div>
-  );
-};
-
-const FeatureCard = ({ title, description }) => {
-  return (
-    <div className="bg-white dark:bg-gray-700 p-6 rounded-xl shadow-md hover:shadow-lg transition-all duration-300">
-      <h3 className="text-base font-semibold mb-2 text-gray-800 dark:text-white">{title}</h3>
-      <p className="text-sm text-gray-600 dark:text-gray-300">{description}</p>
     </div>
   );
 };

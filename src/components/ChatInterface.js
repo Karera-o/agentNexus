@@ -377,7 +377,7 @@ const ChatInterface = ({ activeAgent }) => {
       {/* Chat header */}
       <div className="bg-white dark:bg-gray-800 p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center shadow-sm">
         <div className="flex items-center gap-3">
-          <div className={`bg-gradient-to-r ${agentInfo.color} p-2 rounded-lg shadow-md`}>
+          <div className="bg-primary p-2 rounded-md shadow-sm">
             <FaRobot className="text-white text-lg" />
           </div>
           <div>
@@ -414,7 +414,7 @@ const ChatInterface = ({ activeAgent }) => {
           >
             {message.sender === 'agent' && (
               <div className="flex-shrink-0 mr-3">
-                <div className={`bg-gradient-to-r ${agentInfo.color} p-2 rounded-full shadow-md`}>
+                <div className="bg-primary p-2 rounded-md shadow-sm">
                   <FaRobot className="text-white text-sm" />
                 </div>
               </div>
@@ -423,7 +423,7 @@ const ChatInterface = ({ activeAgent }) => {
             <div
               className={`max-w-[70%] rounded-[var(--message-border-radius)] p-4 shadow-sm ${
                 message.sender === 'user'
-                  ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-tr-none'
+                  ? 'bg-primary text-white rounded-tr-none'
                   : message.error
                     ? 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-gray-800 dark:text-gray-100 rounded-tl-none'
                     : 'bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 rounded-tl-none'
@@ -552,7 +552,7 @@ const ChatInterface = ({ activeAgent }) => {
               disabled={!inputMessage.trim() && selectedFiles.length === 0}
               className={`rounded-full p-3 shadow-md transition-all duration-200 ${
                 (inputMessage.trim() || selectedFiles.length > 0)
-                  ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white hover:shadow-lg transform hover:-translate-y-0.5'
+                  ? 'bg-primary text-white hover:bg-primary-dark transition-colors'
                   : 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed'}`}
             >
               <FaPaperPlane className="text-lg" />

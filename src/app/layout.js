@@ -12,8 +12,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "Dev Agent - AI Development Assistant",
-  description: "A personal multi-agent assistant for software development tasks",
+  title: "AgentNexus - Multi-Agent Assistant",
+  description: "A central hub for software and research agents to assist with your tasks",
 };
 
 export default function RootLayout({ children }) {
