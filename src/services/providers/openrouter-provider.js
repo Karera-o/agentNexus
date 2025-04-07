@@ -83,6 +83,11 @@ export class OpenRouterProvider extends BaseProvider {
     }
   }
 
+  // Track the last time we fetched models to prevent too many requests
+  lastModelFetchTime = 0;
+  modelFetchInProgress = false;
+  cachedModels = null;
+
   /**
    * List available models from OpenRouter
    * @returns {Promise<Array>} List of available models
@@ -102,6 +107,36 @@ export class OpenRouterProvider extends BaseProvider {
       return [];
     }
 
+    // Check if we have cached models and it's been less than 5 minutes since the last fetch
+    const now = Date.now();
+    const fiveMinutes = 5 * 60 * 1000;
+    if (this.cachedModels && now - this.lastModelFetchTime < fiveMinutes) {
+      console.log('OpenRouter: Using cached models (less than 5 minutes old)');
+      return this.cachedModels;
+    }
+
+    // Check if a fetch is already in progress
+    if (this.modelFetchInProgress) {
+      console.log('OpenRouter: Model fetch already in progress, waiting...');
+      // Wait for the current fetch to complete (up to 10 seconds)
+      let waitTime = 0;
+      while (this.modelFetchInProgress && waitTime < 10000) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        waitTime += 100;
+      }
+
+      // If we have cached models after waiting, return them
+      if (this.cachedModels) {
+        console.log('OpenRouter: Using cached models after waiting for fetch to complete');
+        return this.cachedModels;
+      }
+
+      // If we still don't have models, continue with a new fetch
+    }
+
+    // Mark that a fetch is in progress
+    this.modelFetchInProgress = true;
+
     try {
       // Log the headers we're sending (without the actual API key)
       const headers = this.getHeaders();
@@ -111,11 +146,19 @@ export class OpenRouterProvider extends BaseProvider {
       });
 
       console.log(`OpenRouter: Fetching models from ${this.baseUrl}/models`);
+
+      // Create an abort controller for the timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+
       const response = await fetch(`${this.baseUrl}/models`, {
         method: 'GET',
         headers: headers,
-        signal: AbortSignal.timeout(15000) // 15 second timeout
+        signal: controller.signal
       });
+
+      // Clear the timeout
+      clearTimeout(timeoutId);
 
       console.log(`OpenRouter: Response status: ${response.status}`);
 
@@ -158,11 +201,18 @@ export class OpenRouterProvider extends BaseProvider {
         };
       });
 
+      // Cache the models and update the last fetch time
+      this.cachedModels = mappedModels;
+      this.lastModelFetchTime = Date.now();
+
       console.log('OpenRouter: Mapped models:', mappedModels.map(m => m.name).join(', '));
       return mappedModels;
     } catch (error) {
       console.error('Error fetching OpenRouter models:', error);
-      return [];
+      return this.cachedModels || [];
+    } finally {
+      // Mark that the fetch is no longer in progress
+      this.modelFetchInProgress = false;
     }
   }
 

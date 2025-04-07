@@ -15,14 +15,9 @@ export const ModelProvider = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Store selected model for each agent with provider information
-  const [agentModels, setAgentModels] = useState({
-    requirements: { provider: 'ollama', model: '' },
-    documentor: { provider: 'ollama', model: '' },
-    system: { provider: 'ollama', model: '' },
-    database: { provider: 'ollama', model: '' },
-    ui: { provider: 'ollama', model: '' },
-  });
+  // Store selected model for each project-agent combination with provider information
+  // Format: { 'projectId-agentId': { provider: 'provider', model: 'model' } }
+  const [agentModels, setAgentModels] = useState({});
 
   // Define loadAllProviderModels as a memoized function to be reused
   const loadAllProviderModels = useCallback(async () => {
@@ -67,32 +62,25 @@ export const ModelProvider = ({ children }) => {
           // Special handling for OpenRouter - always try to fetch models from API
           if (provider === 'openrouter') {
             try {
-              console.log('ModelContext: Fetching OpenRouter models');
+              console.log('ModelContext: Handling OpenRouter models');
               console.log(`ModelContext: OpenRouter API Key in settings: ${settings.providers.openrouter.apiKey ? 'Present (length: ' + settings.providers.openrouter.apiKey.length + ')' : 'Not set'}`);
               console.log(`ModelContext: OpenRouter API Key in env: ${process.env.NEXT_PUBLIC_OPENROUTER_API_KEY ? 'Present (length: ' + process.env.NEXT_PUBLIC_OPENROUTER_API_KEY.length + ')' : 'Not set'}`);
 
-              // First check if we already have models in settings
-              if (settings.providers.openrouter.models && settings.providers.openrouter.models.length > 0) {
-                console.log(`ModelContext: Using ${settings.providers.openrouter.models.length} models from settings`);
-                modelsObj[provider] = settings.providers.openrouter.models.map(model => ({
-                  name: model.id,
-                  displayName: model.name,
-                  description: model.description || ''
-                }));
-                statusObj[provider] = { checked: true, running: true };
-              } else {
-                // If no models in settings, fetch from API
-                const openRouterProvider = createProvider(provider, settings);
-                console.log(`ModelContext: OpenRouter provider created with API Key: ${openRouterProvider.apiKey ? 'Present (length: ' + openRouterProvider.apiKey.length + ')' : 'Not set'}`);
+              // Always try to fetch fresh models from the API first
+              const openRouterProvider = createProvider(provider, settings);
+              let models = [];
 
-                const models = await openRouterProvider.listModels();
+              try {
+                // Try to fetch models from the API
+                models = await openRouterProvider.listModels();
+                console.log(`ModelContext: Fetched ${models.length} OpenRouter models from API`);
 
-                console.log(`ModelContext: Fetched ${models.length} OpenRouter models`);
-                statusObj[provider] = { checked: true, running: models.length > 0 };
-                modelsObj[provider] = models;
-
-                // If we got models, update the settings
+                // If we got models from the API, use them and update settings
                 if (models.length > 0) {
+                  statusObj[provider] = { checked: true, running: true };
+                  modelsObj[provider] = models;
+
+                  // Update the models in settings
                   const settingsModels = models.map(model => ({
                     id: model.name,
                     name: model.displayName || model.name,
@@ -102,10 +90,32 @@ export const ModelProvider = ({ children }) => {
                   // Update the models in settings
                   settings.providers.openrouter.models = settingsModels;
                   localStorage.setItem('settings', JSON.stringify(settings));
+                  console.log(`ModelContext: Updated settings with ${settingsModels.length} OpenRouter models`);
                 }
+              } catch (fetchError) {
+                console.warn('Error fetching OpenRouter models from API:', fetchError);
+                // If API fetch fails, fall back to models from settings
+              }
+
+              // If we couldn't get models from the API, try to use models from settings
+              if (models.length === 0 && settings.providers.openrouter.models && settings.providers.openrouter.models.length > 0) {
+                console.log(`ModelContext: Using ${settings.providers.openrouter.models.length} models from settings`);
+                modelsObj[provider] = settings.providers.openrouter.models.map(model => ({
+                  name: model.id,
+                  displayName: model.name,
+                  description: model.description || ''
+                }));
+                statusObj[provider] = { checked: true, running: true };
+              }
+
+              // If we still don't have any models, mark the provider as not running
+              if (!modelsObj[provider] || modelsObj[provider].length === 0) {
+                console.warn('No OpenRouter models available from API or settings');
+                statusObj[provider] = { checked: true, running: false };
+                modelsObj[provider] = [];
               }
             } catch (error) {
-              console.error('Error fetching OpenRouter models:', error);
+              console.error('Error handling OpenRouter models:', error);
               statusObj[provider] = { checked: true, running: false };
               modelsObj[provider] = [];
             }
@@ -140,7 +150,6 @@ export const ModelProvider = ({ children }) => {
 
       // Load saved agent models from localStorage or use defaults
       const savedAgentModels = JSON.parse(localStorage.getItem('agentModels')) || {};
-      const defaultAgentModels = {};
 
       // Find the first available model from any provider
       let defaultProvider = '';
@@ -167,27 +176,42 @@ export const ModelProvider = ({ children }) => {
         }
       }
 
-      // Set default models for each agent
-      const agentIds = ['requirements', 'documentor', 'system', 'database', 'ui'];
-      agentIds.forEach(agentId => {
-        if (savedAgentModels[agentId]) {
-          defaultAgentModels[agentId] = savedAgentModels[agentId];
-        } else {
-          defaultAgentModels[agentId] = { provider: defaultProvider, model: defaultModel };
-        }
+      // Keep the saved agent models but ensure they're valid
+      // We'll migrate the old format to the new format if needed
+      const migratedModels = {};
 
-        // Validate that the saved model exists in the available models
-        const savedProvider = defaultAgentModels[agentId].provider;
-        const savedModel = defaultAgentModels[agentId].model;
+      // Check if we need to migrate from the old format (no project IDs)
+      const needsMigration = Object.keys(savedAgentModels).some(key =>
+        !key.includes('-') && ['requirements', 'documentor', 'system', 'database', 'ui'].includes(key));
 
-        if (!modelsObj[savedProvider] ||
-            !modelsObj[savedProvider].some(m => m.name === savedModel)) {
+      if (needsMigration) {
+        console.log('Migrating agent models to new project-based format');
+        // Migrate old format to new format
+        const agentIds = ['requirements', 'documentor', 'system', 'database', 'ui'];
+        agentIds.forEach(agentId => {
+          if (savedAgentModels[agentId]) {
+            // Use 'default' as the project ID for migrated models
+            migratedModels[`default-${agentId}`] = savedAgentModels[agentId];
+          }
+        });
+      } else {
+        // Already in the new format
+        Object.assign(migratedModels, savedAgentModels);
+      }
+
+      // Validate all models to ensure they exist
+      Object.keys(migratedModels).forEach(key => {
+        const modelInfo = migratedModels[key];
+        const provider = modelInfo.provider;
+        const model = modelInfo.model;
+
+        if (!modelsObj[provider] || !modelsObj[provider].some(m => m.name === model)) {
           // If the saved model is not available, use the default
-          defaultAgentModels[agentId] = { provider: defaultProvider, model: defaultModel };
+          migratedModels[key] = { provider: defaultProvider, model: defaultModel };
         }
       });
 
-      setAgentModels(defaultAgentModels);
+      setAgentModels(migratedModels);
     } catch (err) {
       setError('Failed to load models from providers');
       console.error('Error loading models:', err);
@@ -196,6 +220,38 @@ export const ModelProvider = ({ children }) => {
     }
   }, [settings.providers, fetchModelsForProvider]);
 
+  // Function to directly initialize OpenRouter models from settings
+  const initializeOpenRouterModels = useCallback(() => {
+    // Check if we have OpenRouter models in settings
+    if (settings.providers.openrouter?.models?.length > 0) {
+      console.log(`ModelContext: Directly initializing ${settings.providers.openrouter.models.length} OpenRouter models from settings`);
+
+      // Convert models from settings format to provider format
+      const openRouterModels = settings.providers.openrouter.models.map(model => ({
+        name: model.id,
+        displayName: model.name,
+        description: model.description || ''
+      }));
+
+      // Update availableModels with OpenRouter models
+      setAvailableModels(prev => ({
+        ...prev,
+        openrouter: openRouterModels
+      }));
+
+      // Update provider status
+      setProviderStatus(prev => ({
+        ...prev,
+        openrouter: { checked: true, running: true }
+      }));
+
+      console.log('ModelContext: OpenRouter models initialized from settings');
+      return true;
+    }
+
+    return false;
+  }, [settings.providers.openrouter?.models]);
+
   // Create a ref to track if models have been loaded
   const hasLoadedModels = useRef(false);
 
@@ -203,12 +259,29 @@ export const ModelProvider = ({ children }) => {
   useEffect(() => {
     if (!hasLoadedModels.current) {
       hasLoadedModels.current = true;
-      // Use setTimeout to ensure this runs after the component is fully mounted
+
+      // First try to initialize OpenRouter models directly from settings
+      const initialized = initializeOpenRouterModels();
+      console.log(`ModelContext: Direct initialization ${initialized ? 'successful' : 'not needed or failed'}`);
+
+      // Then load all provider models normally
       setTimeout(() => {
-        loadAllProviderModels();
+        loadAllProviderModels()
+          .then(() => {
+            // After loading all models, check if OpenRouter models are properly loaded
+            // If not, try to initialize them again
+            if (settings.providers.openrouter?.enabled &&
+                (!availableModels.openrouter || availableModels.openrouter.length === 0)) {
+              console.log('ModelContext: OpenRouter is enabled but no models loaded, trying to initialize again...');
+              initializeOpenRouterModels();
+            }
+          })
+          .catch(err => {
+            console.error('Error loading models:', err);
+          });
       }, 100);
     }
-  }, []); // Empty dependency array to run only once on mount
+  }, [availableModels.openrouter, initializeOpenRouterModels, loadAllProviderModels, settings.providers.openrouter?.enabled]); // Add dependencies
 
   // Save agent models to localStorage when they change
   useEffect(() => {
@@ -217,10 +290,13 @@ export const ModelProvider = ({ children }) => {
     }
   }, [agentModels, isLoading]);
 
-  // Set model for a specific agent
-  const setModelForAgent = (agentId, provider, modelName) => {
+  // Set model for a specific agent in a specific project
+  const setModelForAgent = (projectId, agentId, provider, modelName) => {
+    // Create a unique key for this project-agent combination
+    const key = projectId ? `${projectId}-${agentId}` : `default-${agentId}`;
+
     // Check if the model is already selected to prevent unnecessary updates
-    const currentModel = agentModels[agentId];
+    const currentModel = agentModels[key];
     if (currentModel && currentModel.provider === provider && currentModel.model === modelName) {
       return; // No change needed
     }
@@ -228,22 +304,37 @@ export const ModelProvider = ({ children }) => {
     // Update the model
     setAgentModels(prev => ({
       ...prev,
-      [agentId]: { provider, model: modelName }
+      [key]: { provider, model: modelName }
     }));
 
     // Save to localStorage immediately
     const updatedModels = {
       ...agentModels,
-      [agentId]: { provider, model: modelName }
+      [key]: { provider, model: modelName }
     };
     localStorage.setItem('agentModels', JSON.stringify(updatedModels));
 
-    console.log(`Model set for ${agentId}: ${provider}/${modelName}`);
+    console.log(`Model set for ${projectId || 'default'} - ${agentId}: ${provider}/${modelName}`);
   };
 
-  // Get model for a specific agent
-  const getModelForAgent = (agentId) => {
-    return agentModels[agentId] || { provider: '', model: '' };
+  // Get model for a specific agent in a specific project
+  const getModelForAgent = (projectId, agentId) => {
+    // Create a unique key for this project-agent combination
+    const key = projectId ? `${projectId}-${agentId}` : `default-${agentId}`;
+
+    // Try to get the model for this specific project-agent combination
+    if (agentModels[key]) {
+      return agentModels[key];
+    }
+
+    // If not found, try to get the default model for this agent
+    const defaultKey = `default-${agentId}`;
+    if (agentModels[defaultKey]) {
+      return agentModels[defaultKey];
+    }
+
+    // If still not found, return empty values
+    return { provider: '', model: '' };
   };
 
   // Get all models for a specific provider
@@ -263,11 +354,77 @@ export const ModelProvider = ({ children }) => {
 
   // Refresh models for all providers
   const refreshAllModels = useCallback(() => {
+    // Prevent multiple simultaneous refreshes
+    if (isLoading) {
+      console.log('Already loading models, skipping refresh');
+      return Promise.resolve(false);
+    }
+
+    console.log('Refreshing all models...');
+
+    // First try to initialize OpenRouter models directly from settings
+    // This ensures we have models immediately available
+    const initialized = initializeOpenRouterModels();
+    console.log(`ModelContext: Direct initialization during refresh ${initialized ? 'successful' : 'not needed or failed'}`);
+
     // Force a refresh by setting isLoading to false first
     setIsLoading(false);
-    // Then call loadAllProviderModels
-    return loadAllProviderModels();
-  }, [loadAllProviderModels]);
+
+    // Special handling for OpenRouter - try to fetch models directly if enabled
+    if (settings.providers.openrouter?.enabled) {
+      console.log('ModelContext: OpenRouter is enabled, attempting to fetch models directly');
+      try {
+        const openRouterProvider = createProvider('openrouter', settings);
+        openRouterProvider.listModels()
+          .then(models => {
+            if (models && models.length > 0) {
+              console.log(`ModelContext: Successfully fetched ${models.length} OpenRouter models directly`);
+              // Update availableModels with the fetched models
+              setAvailableModels(prev => ({
+                ...prev,
+                openrouter: models
+              }));
+
+              // Update provider status
+              setProviderStatus(prev => ({
+                ...prev,
+                openrouter: { checked: true, running: true }
+              }));
+            }
+          })
+          .catch(err => {
+            console.error('Error fetching OpenRouter models directly:', err);
+          });
+      } catch (err) {
+        console.error('Error creating OpenRouter provider:', err);
+      }
+    }
+
+    // Then call loadAllProviderModels and return the promise
+    return loadAllProviderModels()
+      .then(() => {
+        console.log('Models refreshed successfully');
+
+        // After loading all models, make sure OpenRouter models are properly loaded
+        // This is a fallback in case the API request failed
+        if (settings.providers.openrouter?.enabled &&
+            (!availableModels.openrouter || availableModels.openrouter.length === 0)) {
+          console.log('No OpenRouter models found after refresh, trying to initialize from settings');
+          initializeOpenRouterModels();
+        }
+
+        return true;
+      })
+      .catch(error => {
+        console.error('Error refreshing models:', error);
+
+        // Even if the refresh fails, try to initialize OpenRouter models from settings
+        console.log('Refresh failed, trying to initialize OpenRouter models from settings');
+        initializeOpenRouterModels();
+
+        return false;
+      });
+  }, [loadAllProviderModels, isLoading, initializeOpenRouterModels, availableModels.openrouter, settings.providers.openrouter?.enabled, createProvider, settings]);
 
   // Context value
   const value = {

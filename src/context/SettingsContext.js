@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { createProvider, getAllProviders } from '../services/providers/provider-factory';
 
 import { getApiKey, getEnvApiKey, saveApiKeysToEnv, extractApiKeys } from '../utils/envManager';
@@ -181,7 +181,7 @@ export const SettingsProvider = ({ children }) => {
   };
 
   // Update a provider setting
-  const updateProviderSetting = (provider, key, value) => {
+  const updateProviderSetting = useCallback((provider, key, value) => {
     // Save API key to localStorage if it's being updated
     if (key === 'apiKey' && value) {
       localStorage.setItem(`apiKey_${provider}`, value);
@@ -239,7 +239,7 @@ export const SettingsProvider = ({ children }) => {
 
       return newSettings;
     });
-  };
+  }, [setSettings]);
 
   // Toggle settings modal
   const toggleSettings = () => {
@@ -328,6 +328,23 @@ export const SettingsProvider = ({ children }) => {
     const modelPromises = enabledProviders.map((provider) => fetchModelsForProvider(provider));
     await Promise.all(modelPromises);
   };
+
+  // Add a global function to update OpenRouter models in settings
+  // This allows other components to update the settings directly
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.updateOpenRouterModelsInSettings = (models) => {
+        console.log(`SettingsContext: Updating OpenRouter models in settings with ${models.length} models`);
+        updateProviderSetting('openrouter', 'models', models);
+      };
+    }
+
+    return () => {
+      if (typeof window !== 'undefined') {
+        delete window.updateOpenRouterModelsInSettings;
+      }
+    };
+  }, [updateProviderSetting]);
 
   // Context value
   const value = {

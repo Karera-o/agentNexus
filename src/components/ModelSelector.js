@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { FaRobot, FaChevronDown, FaExclamationTriangle, FaSpinner, FaServer, FaCloud, FaGlobe } from 'react-icons/fa';
 import { useModelContext } from '../context/ModelContext';
 import { useSettings } from '../context/SettingsContext';
+import { createProvider } from '../services/providers/provider-factory';
 
 const ModelSelector = ({ selectedModel, onModelSelect, agentColor }) => {
   // State variables
@@ -21,6 +22,13 @@ const ModelSelector = ({ selectedModel, onModelSelect, agentColor }) => {
     if (!newIsOpen) {
       setSelectionStep('provider');
       setSelectedProvider(null);
+    } else {
+      // When opening the dropdown, check if OpenRouter models need to be loaded
+      if (settings.providers.openrouter?.enabled &&
+          (!availableModels.openrouter || availableModels.openrouter.length === 0)) {
+        console.log('ModelSelector: Opening dropdown and OpenRouter is enabled but no models found, refreshing...');
+        refreshAllModels();
+      }
     }
   };
 
@@ -34,11 +42,82 @@ const ModelSelector = ({ selectedModel, onModelSelect, agentColor }) => {
     refreshAllModels
   } = useModelContext();
 
+  // Effect to initialize models when the component mounts
+  useEffect(() => {
+    // If OpenRouter is enabled but we don't have models, fetch them directly from the API
+    if (settings.providers.openrouter?.enabled &&
+        (!availableModels.openrouter || availableModels.openrouter.length === 0)) {
+      console.log('ModelSelector: OpenRouter is enabled but no models found, fetching directly from API...');
+
+      // Get the API key from settings or environment variables
+      const apiKey = settings.providers.openrouter?.apiKey || process.env.NEXT_PUBLIC_OPENROUTER_API_KEY || '';
+
+      if (apiKey) {
+        console.log('ModelSelector: API key found, fetching OpenRouter models...');
+
+        // Create headers
+        const headers = {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+          'HTTP-Referer': typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000',
+          'X-Title': 'Dev Agent App'
+        };
+
+        // Fetch models directly from the API
+        fetch('https://openrouter.ai/api/v1/models', {
+          method: 'GET',
+          headers: headers
+        })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`API Error (${response.status})`);
+          }
+          return response.json();
+        })
+        .then(data => {
+          console.log(`ModelSelector: Successfully fetched ${data.data?.length || 0} OpenRouter models`);
+
+          if (data.data && data.data.length > 0) {
+            // Update settings with the models
+            const settingsModels = data.data.map(model => ({
+              id: model.id,
+              name: model.name || model.id,
+              description: model.description || ''
+            }));
+
+            // Update the models in settings context if the global function exists
+            if (window.updateOpenRouterModelsInSettings) {
+              window.updateOpenRouterModelsInSettings(settingsModels);
+            }
+
+            // Refresh all models to update the UI
+            refreshAllModels();
+          }
+        })
+        .catch(error => {
+          console.error('Error fetching OpenRouter models:', error);
+          // If direct fetch fails, try the normal refresh
+          refreshAllModels();
+        });
+      } else {
+        // If no API key, just try the normal refresh
+        refreshAllModels();
+      }
+    }
+  }, [settings.providers.openrouter?.enabled, settings.providers.openrouter?.apiKey, availableModels.openrouter, refreshAllModels]);
+
   // Handle provider selection
   const handleProviderSelect = (provider) => {
     setSelectedProvider(provider);
     setSelectionStep('model');
     setSearchTerm(''); // Clear search when switching to model selection
+
+    // Automatically fetch models for OpenRouter if needed
+    if (provider === 'openrouter') {
+      console.log('Automatically fetching OpenRouter models...');
+      // Always refresh models when selecting OpenRouter
+      refreshAllModels();
+    }
   };
 
   // Handle model selection
@@ -151,28 +230,30 @@ const ModelSelector = ({ selectedModel, onModelSelect, agentColor }) => {
     let providerModels = [];
 
     try {
-      // Special case for OpenRouter - always use the fetched models
+      // Special case for OpenRouter - use both fetched models and models from settings
       if (provider === 'openrouter') {
-        console.log('ModelSelector: Getting OpenRouter models from availableModels:', availableModels[provider]);
-        providerModels = availableModels[provider] || [];
-        console.log(`ModelSelector: Found ${providerModels.length} OpenRouter models`);
+        console.log('ModelSelector: Getting OpenRouter models');
 
-        // If we have no models, check if we need to refresh
-        if (providerModels.length === 0 && settings.providers[provider]?.apiKey) {
-          console.log('ModelSelector: No OpenRouter models found, but API key is set. Consider refreshing models.');
-
-          // Check if we have models in settings
-          if (settings.providers[provider]?.models?.length > 0) {
-            console.log(`ModelSelector: Found ${settings.providers[provider].models.length} models in settings`);
-            // Use models from settings
-            providerModels = settings.providers[provider].models.map(model => ({
-              name: model.id,
-              displayName: model.name,
-              description: model.description || ''
-            }));
-          }
-          // We'll show a message to the user to refresh models if no models are found
+        // First check if we have models in availableModels
+        if (availableModels[provider] && availableModels[provider].length > 0) {
+          console.log(`ModelSelector: Found ${availableModels[provider].length} OpenRouter models in availableModels`);
+          providerModels = availableModels[provider];
         }
+        // If not, check if we have models in settings
+        else if (settings.providers[provider]?.models?.length > 0) {
+          console.log(`ModelSelector: Found ${settings.providers[provider].models.length} models in settings`);
+          // Use models from settings
+          providerModels = settings.providers[provider].models.map(model => ({
+            name: model.id,
+            displayName: model.name,
+            description: model.description || ''
+          }));
+        } else {
+          console.log('ModelSelector: No OpenRouter models found in availableModels or settings');
+          providerModels = [];
+        }
+
+        console.log(`ModelSelector: Using ${providerModels.length} OpenRouter models`);
       }
       // For other cloud providers, use the predefined models from settings
       else if (!settings.providers[provider]?.local && settings.providers[provider]?.models?.length > 0) {
@@ -342,12 +423,94 @@ const ModelSelector = ({ selectedModel, onModelSelect, agentColor }) => {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
+                              // Prevent the event from bubbling up
+                              e.preventDefault();
                               console.log('Manually refreshing OpenRouter models...');
-                              refreshAllModels();
+                              // Use a local loading state to prevent multiple clicks
+                              const button = e.currentTarget;
+                              if (button.disabled) return;
+
+                              button.disabled = true;
+                              button.innerHTML = '<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Fetching...';
+
+                              // Try to directly fetch OpenRouter models
+                              try {
+                                const openRouterProvider = createProvider('openrouter', settings);
+                                openRouterProvider.listModels()
+                                  .then(models => {
+                                    if (models && models.length > 0) {
+                                      console.log(`ModelSelector: Successfully fetched ${models.length} OpenRouter models directly`);
+                                      // After successful direct fetch, refresh all models to update the UI
+                                      refreshAllModels()
+                                        .then(() => {
+                                          // Force a second refresh after a short delay to ensure UI updates
+                                          setTimeout(() => {
+                                            console.log('Forcing second refresh to update UI');
+                                            refreshAllModels().finally(() => {
+                                              button.disabled = false;
+                                              button.innerHTML = 'Fetch OpenRouter Models';
+                                            });
+                                          }, 500);
+                                        })
+                                        .catch(() => {
+                                          button.disabled = false;
+                                          button.innerHTML = 'Retry Fetch';
+                                        });
+                                    } else {
+                                      // If no models were fetched directly, try the normal refresh
+                                      refreshAllModels()
+                                        .then(() => {
+                                          setTimeout(() => {
+                                            refreshAllModels().finally(() => {
+                                              button.disabled = false;
+                                              button.innerHTML = 'Fetch OpenRouter Models';
+                                            });
+                                          }, 500);
+                                        })
+                                        .catch(() => {
+                                          button.disabled = false;
+                                          button.innerHTML = 'Retry Fetch';
+                                        });
+                                    }
+                                  })
+                                  .catch(err => {
+                                    console.error('Error fetching OpenRouter models directly:', err);
+                                    // If direct fetch fails, try the normal refresh
+                                    refreshAllModels()
+                                      .then(() => {
+                                        setTimeout(() => {
+                                          refreshAllModels().finally(() => {
+                                            button.disabled = false;
+                                            button.innerHTML = 'Fetch OpenRouter Models';
+                                          });
+                                        }, 500);
+                                      })
+                                      .catch(() => {
+                                        button.disabled = false;
+                                        button.innerHTML = 'Retry Fetch';
+                                      });
+                                  });
+                              } catch (err) {
+                                console.error('Error creating OpenRouter provider:', err);
+                                // If provider creation fails, try the normal refresh
+                                refreshAllModels()
+                                  .then(() => {
+                                    setTimeout(() => {
+                                      refreshAllModels().finally(() => {
+                                        button.disabled = false;
+                                        button.innerHTML = 'Fetch OpenRouter Models';
+                                      });
+                                    }, 500);
+                                  })
+                                  .catch(() => {
+                                    button.disabled = false;
+                                    button.innerHTML = 'Retry Fetch';
+                                  });
+                              }
                             }}
                             className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm inline-flex items-center"
                           >
-                            <FaSpinner className="mr-2 animate-spin" /> Fetch OpenRouter Models
+                            <FaSpinner className="mr-2" /> Fetch OpenRouter Models
                           </button>
                         </div>
                       ) : 'No models available'

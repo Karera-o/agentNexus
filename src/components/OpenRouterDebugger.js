@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FaSpinner } from 'react-icons/fa';
 import { useSettings } from '../context/SettingsContext';
 import { useModelContext } from '../context/ModelContext';
@@ -15,7 +15,27 @@ const OpenRouterDebugger = () => {
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
 
+  // Use a ref to track if a request is in progress
+  const [requestInProgress, setRequestInProgress] = useState(false);
+
+  // Effect to initialize models when the component mounts
+  useEffect(() => {
+    // Check if we have OpenRouter models in settings but not in availableModels
+    if (settings.providers.openrouter?.models?.length > 0 &&
+        (!availableModels.openrouter || availableModels.openrouter.length === 0)) {
+      console.log('OpenRouterDebugger: OpenRouter models found in settings but not in availableModels, refreshing...');
+      refreshAllModels();
+    }
+  }, [settings.providers.openrouter?.models, availableModels.openrouter, refreshAllModels]);
+
   const testOpenRouterAPI = async () => {
+    // Prevent multiple simultaneous requests
+    if (requestInProgress) {
+      console.log('Request already in progress, skipping');
+      return;
+    }
+
+    setRequestInProgress(true);
     setIsLoading(true);
     setResult(null);
     setError(null);
@@ -40,33 +60,74 @@ const OpenRouterDebugger = () => {
 
       console.log('Headers:', { ...headers, 'Authorization': 'Bearer [REDACTED]' });
 
-      // Test the models endpoint
-      const response = await fetch('https://openrouter.ai/api/v1/models', {
-        method: 'GET',
-        headers: headers
-      });
+      // Add a timeout to the fetch request
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
 
-      console.log(`Response status: ${response.status}`);
+      try {
+        // Test the models endpoint
+        const response = await fetch('https://openrouter.ai/api/v1/models', {
+          method: 'GET',
+          headers: headers,
+          signal: controller.signal
+        });
 
-      if (!response.ok) {
-        let errorText;
-        try {
-          const errorData = await response.json();
-          errorText = JSON.stringify(errorData);
-        } catch (e) {
-          errorText = await response.text();
+        // Clear the timeout
+        clearTimeout(timeoutId);
+
+        console.log(`Response status: ${response.status}`);
+
+        if (!response.ok) {
+          let errorText;
+          try {
+            const errorData = await response.json();
+            errorText = JSON.stringify(errorData);
+          } catch (e) {
+            errorText = await response.text();
+          }
+          throw new Error(`API Error (${response.status}): ${errorText}`);
         }
-        throw new Error(`API Error (${response.status}): ${errorText}`);
-      }
 
-      const data = await response.json();
-      setResult(data);
-      console.log('OpenRouter API test successful:', data);
+        const data = await response.json();
+        setResult(data);
+        console.log('OpenRouter API test successful:', data);
+
+        // After successful API test, refresh the models
+        console.log('OpenRouter API test successful, refreshing models...');
+        await refreshAllModels();
+
+        // Update settings with the models from the API response
+        if (data.data && data.data.length > 0) {
+          console.log(`OpenRouterDebugger: Updating settings with ${data.data.length} models from API response`);
+          const settingsModels = data.data.map(model => ({
+            id: model.id,
+            name: model.name || model.id,
+            description: model.description || ''
+          }));
+
+          // Update the models in settings context
+          if (window.updateOpenRouterModelsInSettings) {
+            window.updateOpenRouterModelsInSettings(settingsModels);
+          }
+        }
+
+        // Force a re-render to update the UI
+        setTimeout(() => {
+          console.log('Forcing UI update after model refresh');
+          refreshAllModels();
+        }, 500);
+      } catch (fetchError) {
+        if (fetchError.name === 'AbortError') {
+          throw new Error('Request timed out after 15 seconds');
+        }
+        throw fetchError;
+      }
     } catch (error) {
       console.error('OpenRouter API test failed:', error);
       setError(error.message);
     } finally {
       setIsLoading(false);
+      setRequestInProgress(false);
     }
   };
 
@@ -90,7 +151,7 @@ const OpenRouterDebugger = () => {
       <div className="flex flex-wrap gap-2">
         <button
           onClick={testOpenRouterAPI}
-          disabled={isLoading}
+          disabled={isLoading || requestInProgress}
           className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:bg-gray-400 flex items-center"
         >
           {isLoading ? <FaSpinner className="mr-2 animate-spin" /> : null}
@@ -102,9 +163,11 @@ const OpenRouterDebugger = () => {
             console.log('Manually refreshing models...');
             refreshAllModels();
           }}
-          className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors flex items-center"
+          disabled={isLoading || requestInProgress}
+          className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors flex items-center disabled:bg-gray-400"
         >
-          <FaSpinner className="mr-2" /> Refresh Models
+          {isLoading ? <FaSpinner className="mr-2 animate-spin" /> : <FaSpinner className="mr-2" />}
+          Refresh Models
         </button>
       </div>
 

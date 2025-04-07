@@ -10,6 +10,8 @@ import { useModelContext } from '../context/ModelContext';
 import { useSettings } from '../context/SettingsContext';
 import { createProvider } from '../services/providers/provider-factory';
 import MarkdownRenderer from './MarkdownRenderer';
+import { getCachedAgentSystemPrompt, getDefaultSystemPrompt } from '../utils/agentPrompts';
+import { startGeneration, getGenerationStatus, getOngoingGenerations, hasOngoingGenerations } from '../services/chatGenerationManager';
 
 const ChatInterface = ({ activeAgent }) => {
   const [messages, setMessages] = useState([]);
@@ -153,6 +155,45 @@ const ChatInterface = ({ activeAgent }) => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Check for ongoing generations when the component mounts or when the active project/agent changes
+  useEffect(() => {
+    if (!activeProject || !activeAgent) return;
+
+    // Get ongoing generations for this project-agent combination
+    const generations = getOngoingGenerations(activeProject.id, activeAgent);
+    if (generations.length === 0) return;
+
+    // Update messages with ongoing generations
+    generations.forEach(generation => {
+      if (generation.status === 'generating' || generation.status === 'complete') {
+        // Check if the message already exists in our state
+        const messageExists = messages.some(msg => msg.id === generation.messageId);
+
+        if (!messageExists) {
+          // This is a generation from another session, we need to load the full chat history
+          // For now, we'll just update the existing message if it exists
+          console.log('Found ongoing generation from another session:', generation);
+        } else {
+          // Update the existing message with the latest content
+          setMessages(prev => {
+            const updatedMessages = [...prev];
+            const messageIndex = updatedMessages.findIndex(msg => msg.id === generation.messageId);
+
+            if (messageIndex !== -1) {
+              updatedMessages[messageIndex] = {
+                ...updatedMessages[messageIndex],
+                content: generation.content,
+                isStreaming: generation.status === 'generating',
+              };
+            }
+
+            return updatedMessages;
+          });
+        }
+      }
+    });
+  }, [activeProject, activeAgent, messages]);
+
   const handleFileSelect = (files) => {
     // If we have a project storage path, save the files there
     if (activeProject?.storagePath) {
@@ -200,7 +241,7 @@ const ChatInterface = ({ activeAgent }) => {
     setIsTyping(true);
 
     const agentInfo = getAgentInfo(activeAgent);
-    const selectedModelInfo = getModelForAgent(activeAgent);
+    const selectedModelInfo = getModelForAgent(activeProject?.id || null, activeAgent);
 
     // Create a placeholder for the streaming response
     const responseId = Date.now() + 1;
@@ -253,10 +294,24 @@ const ChatInterface = ({ activeAgent }) => {
         // Prepare the messages for Ollama API
         const promptMessages = [];
 
+        // Get the system prompt for this agent
+        let systemPrompt = getDefaultSystemPrompt(activeAgent);
+        try {
+          // Try to get the cached system prompt
+          systemPrompt = await getCachedAgentSystemPrompt(activeAgent);
+        } catch (error) {
+          console.warn('Error getting system prompt, using default:', error);
+        }
+
+        // Add file analysis instruction if files are uploaded
+        if (userMessage.files && userMessage.files.length > 0) {
+          systemPrompt += '\n\nThe user has uploaded files that you should analyze.';
+        }
+
         // Add system message with agent role
         promptMessages.push({
           role: 'system',
-          content: `You are a ${agentInfo.title}, an AI assistant specialized in helping with software development tasks. ${userMessage.files ? 'The user has uploaded files that you should analyze.' : ''}`
+          content: systemPrompt
         });
 
         // Add previous messages for context (limit based on settings)
@@ -283,14 +338,21 @@ const ChatInterface = ({ activeAgent }) => {
         }
         promptMessages.push({ role: 'user', content: userContent });
 
-        // Use streaming or non-streaming based on settings
-        if (settings.streamResponses) {
-          // Generate streaming response
-          await provider.generateStreamingCompletion(
-            modelName,
-            promptMessages,
-            (chunk, fullText) => {
+        // Use the chat generation manager to handle the generation
+        // This will continue in the background even if the user navigates away
+        try {
+          // Start the generation
+          const generatedText = await startGeneration({
+            projectId: activeProject?.id || null,
+            agentId: activeAgent,
+            messageId: responseId,
+            modelInfo: selectedModelInfo,
+            messages: promptMessages,
+            settings,
+            onUpdate: (fullText) => {
+              // Only update the UI if this component is still mounted and focused on this chat
               setStreamedResponse(fullText);
+
               // Update the message in real-time
               setMessages(prev => {
                 const updatedMessages = [...prev];
@@ -303,43 +365,29 @@ const ChatInterface = ({ activeAgent }) => {
                 }
                 return updatedMessages;
               });
-            },
-            { temperature: 0.7 }
-          );
-        } else {
-          // Generate non-streaming response
-          const response = await provider.generateCompletion(
-            modelName,
-            promptMessages,
-            { temperature: 0.7 }
-          );
+            }
+          });
 
-          // Update the message with the response
+          // Ensure the final message is updated with the complete text
+          // This is important if the user navigated away and back
           setMessages(prev => {
             const updatedMessages = [...prev];
             const responseIndex = updatedMessages.findIndex(m => m.id === responseId);
-            if (responseIndex !== -1 && response.message) {
+            if (responseIndex !== -1) {
               updatedMessages[responseIndex] = {
                 ...updatedMessages[responseIndex],
-                content: response.message.content || 'No response content',
+                content: generatedText,
+                isStreaming: false,
               };
             }
             return updatedMessages;
           });
+        } catch (error) {
+          console.error('Error in chat generation manager:', error);
+          throw error; // Re-throw to be caught by the outer try/catch
         }
 
-        // Finalize the message when complete
-        setMessages(prev => {
-          const updatedMessages = [...prev];
-          const responseIndex = updatedMessages.findIndex(m => m.id === responseId);
-          if (responseIndex !== -1) {
-            updatedMessages[responseIndex] = {
-              ...updatedMessages[responseIndex],
-              isStreaming: false,
-            };
-          }
-          return updatedMessages;
-        });
+        // Message is already finalized in the try/catch block
     } catch (error) {
       console.error('Error generating response:', error);
 
@@ -369,8 +417,10 @@ const ChatInterface = ({ activeAgent }) => {
 
   // Memoize the model selection handler
   const handleModelSelect = useCallback((provider, model) => {
-    setModelForAgent(activeAgent, provider, model);
-  }, [activeAgent, setModelForAgent]);
+    // Pass the project ID if available, otherwise use default
+    const projectId = activeProject?.id || null;
+    setModelForAgent(projectId, activeAgent, provider, model);
+  }, [activeAgent, activeProject, setModelForAgent]);
 
   return (
     <div className="flex flex-col h-full bg-gray-50 dark:bg-gray-900">
@@ -388,7 +438,7 @@ const ChatInterface = ({ activeAgent }) => {
         <div className="flex items-center gap-3">
           {/* Model selector */}
           <ModelSelector
-            selectedModel={getModelForAgent(activeAgent)}
+            selectedModel={getModelForAgent(activeProject?.id || null, activeAgent)}
             onModelSelect={handleModelSelect}
             agentColor={agentInfo.color}
           />
@@ -459,7 +509,7 @@ const ChatInterface = ({ activeAgent }) => {
               }`}>
                 <div className="flex items-center gap-1">
                   {message.sender === 'agent' && isOllamaAvailable && (
-                    <span className="text-xs">{getModelForAgent(activeAgent)}</span>
+                    <span className="text-xs">{getModelForAgent(activeProject?.id || null, activeAgent).model}</span>
                   )}
                   <span>
                     {message.timestamp instanceof Date

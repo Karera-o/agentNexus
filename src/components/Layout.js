@@ -9,8 +9,8 @@ import SettingsButton from './SettingsButton';
 import SettingsModal from './SettingsModal';
 import ProjectModal from './ProjectModal';
 import WelcomeMessage from './WelcomeMessage';
-import { ModelProvider } from '../context/ModelContext';
-import { SettingsProvider } from '../context/SettingsContext';
+import { ModelProvider, useModelContext } from '../context/ModelContext';
+import { SettingsProvider, useSettings } from '../context/SettingsContext';
 import { ProjectProvider, useProject, PROJECT_TYPES } from '../context/ProjectContext';
 
 const Layout = () => {
@@ -122,10 +122,29 @@ const Layout = () => {
     );
   };
 
+  // Create a ModelInitializer component to ensure models are loaded
+  const ModelInitializer = () => {
+    const { settings } = useSettings();
+    const { refreshAllModels, availableModels } = useModelContext();
+
+    // Effect to initialize models when the app starts
+    useEffect(() => {
+      // Check if we have OpenRouter models in settings but not in availableModels
+      if (settings.providers.openrouter?.models?.length > 0 &&
+          (!availableModels.openrouter || availableModels.openrouter.length === 0)) {
+        console.log('Layout: OpenRouter models found in settings but not in availableModels, refreshing...');
+        refreshAllModels();
+      }
+    }, [settings.providers.openrouter?.models, availableModels.openrouter, refreshAllModels]);
+
+    return null; // This component doesn't render anything
+  };
+
   return (
     <SettingsProvider>
       <ModelProvider>
         <ProjectProvider>
+          <ModelInitializer />
           <LayoutContent />
         </ProjectProvider>
       </ModelProvider>

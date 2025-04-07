@@ -3,12 +3,19 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
-    "build": "next build",
+    "dev": "node scripts/copy-agent-configs.js && next dev --turbopack",
+    "build": "node scripts/copy-agent-configs.js && next build",
     "start": "next start",
     "lint": "next lint",
     "test-env": "node scripts/test-env.js",
-    "test-openrouter": "node scripts/test-openrouter.js"
+    "test-openrouter": "node scripts/test-openrouter.js",
+    "test-agent-prompts": "node scripts/test-agent-prompts.js",
+    "test-model-selection": "node scripts/test-model-selection.js",
+    "test-background-generation": "node scripts/test-background-generation.js",
+    "test-openrouter-fetch": "node scripts/test-openrouter-fetch.js",
+    "test-openrouter-integration": "node scripts/test-openrouter-integration.js",
+    "test-openrouter-auto-init": "node scripts/test-openrouter-auto-init.js",
+    "copy-agent-configs": "node scripts/copy-agent-configs.js"
   },
   "dependencies": {
     "dotenv": "^16.4.7",

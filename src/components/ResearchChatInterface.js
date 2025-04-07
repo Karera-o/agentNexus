@@ -7,6 +7,8 @@ import { useSettings } from '../context/SettingsContext';
 import { useProject } from '../context/ProjectContext';
 import { joinPath, saveFile } from '../utils/fileSystem';
 import ModelSelector from './ModelSelector';
+import { startGeneration, getGenerationStatus, getOngoingGenerations, hasOngoingGenerations } from '../services/chatGenerationManager';
+import { createProvider } from '../services/providers/provider-factory';
 
 const ResearchChatInterface = () => {
   const [messages, setMessages] = useState([]);
@@ -100,6 +102,45 @@ const ResearchChatInterface = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Check for ongoing generations when the component mounts or when the active project changes
+  useEffect(() => {
+    if (!activeProject) return;
+
+    // Get ongoing generations for this project-agent combination
+    const generations = getOngoingGenerations(activeProject.id, 'research');
+    if (generations.length === 0) return;
+
+    // Update messages with ongoing generations
+    generations.forEach(generation => {
+      if (generation.status === 'generating' || generation.status === 'complete') {
+        // Check if the message already exists in our state
+        const messageExists = messages.some(msg => msg.id === generation.messageId);
+
+        if (!messageExists) {
+          // This is a generation from another session, we need to load the full chat history
+          // For now, we'll just update the existing message if it exists
+          console.log('Found ongoing generation from another session:', generation);
+        } else {
+          // Update the existing message with the latest content
+          setMessages(prev => {
+            const updatedMessages = [...prev];
+            const messageIndex = updatedMessages.findIndex(msg => msg.id === generation.messageId);
+
+            if (messageIndex !== -1) {
+              updatedMessages[messageIndex] = {
+                ...updatedMessages[messageIndex],
+                content: generation.content,
+                isStreaming: generation.status === 'generating',
+              };
+            }
+
+            return updatedMessages;
+          });
+        }
+      }
+    });
+  }, [activeProject, messages]);
+
   // Handle file upload
   const handleFileUpload = (e) => {
     const uploadedFiles = Array.from(e.target.files);
@@ -152,17 +193,99 @@ const ResearchChatInterface = () => {
     setIsGenerating(true);
 
     try {
-      // Simulate AI response with a delay
-      setTimeout(() => {
-        const aiResponse = {
-          role: 'assistant',
-          content: `I have analyzed your research query${input ? ': "' + input + '"' : ''}. ${files.length > 0 ? 'I have also examined the ' + files.length + ' file(s) you provided.' : ''}\n\nHere is what I found:\n\n1. Your question relates to [research topic].\n2. Based on recent literature, [key finding 1].\n3. Additionally, [key finding 2].\n\nWould you like me to explore any specific aspect of this research topic in more detail?`,
-          timestamp: new Date() // Store as Date object for consistency
-        };
+      // Get the selected model info
+      const selectedModelInfo = getModelForAgent(activeProject?.id || null, 'research');
+      const providerName = selectedModelInfo.provider;
+      const modelName = selectedModelInfo.model;
 
-        setMessages(prev => [...prev, aiResponse]);
-        setIsGenerating(false);
-      }, 2000);
+      if (!providerName || !modelName) {
+        throw new Error('No model selected. Please select a model from the dropdown.');
+      }
+
+      // Create a response message ID
+      const responseId = Date.now() + 1;
+
+      // Add initial response message
+      const initialResponse = {
+        id: responseId,
+        role: 'assistant',
+        content: 'Thinking...',
+        timestamp: new Date(),
+        isStreaming: true
+      };
+
+      setMessages(prev => [...prev, initialResponse]);
+
+      // Prepare the messages for the API
+      const promptMessages = [];
+
+      // Add system message
+      promptMessages.push({
+        role: 'system',
+        content: `You are a Research Assistant, an AI specialized in analyzing research papers, summarizing findings, and answering questions about academic topics. ${files.length > 0 ? 'The user has uploaded files that you should analyze.' : ''}`
+      });
+
+      // Add previous messages for context
+      const messageLimit = settings.messageHistory || 50;
+      const contextMessages = messages.slice(-messageLimit);
+      for (const msg of contextMessages) {
+        if (msg.role === 'user') {
+          let content = msg.content || '';
+          if (msg.files && msg.files.length > 0) {
+            content += `\n[User has uploaded files: ${msg.files.join(', ')}]`;
+          }
+          promptMessages.push({ role: 'user', content });
+        } else {
+          promptMessages.push({ role: 'assistant', content: msg.content || '' });
+        }
+      }
+
+      // Add the current message
+      let userContent = userMessage.content || '';
+      if (userMessage.files && userMessage.files.length > 0) {
+        userContent += `\n[User has uploaded files: ${userMessage.files.join(', ')}]`;
+      }
+      promptMessages.push({ role: 'user', content: userContent });
+
+      // Use the chat generation manager to handle the generation
+      const generatedText = await startGeneration({
+        projectId: activeProject?.id || null,
+        agentId: 'research',
+        messageId: responseId,
+        modelInfo: selectedModelInfo,
+        messages: promptMessages,
+        settings,
+        onUpdate: (fullText) => {
+          // Update the message in real-time
+          setMessages(prev => {
+            const updatedMessages = [...prev];
+            const responseIndex = updatedMessages.findIndex(m => m.id === responseId);
+            if (responseIndex !== -1) {
+              updatedMessages[responseIndex] = {
+                ...updatedMessages[responseIndex],
+                content: fullText,
+              };
+            }
+            return updatedMessages;
+          });
+        }
+      });
+
+      // Ensure the final message is updated with the complete text
+      setMessages(prev => {
+        const updatedMessages = [...prev];
+        const responseIndex = updatedMessages.findIndex(m => m.id === responseId);
+        if (responseIndex !== -1) {
+          updatedMessages[responseIndex] = {
+            ...updatedMessages[responseIndex],
+            content: generatedText,
+            isStreaming: false,
+          };
+        }
+        return updatedMessages;
+      });
+
+      setIsGenerating(false);
     } catch (error) {
       console.error('Error generating response:', error);
       setIsGenerating(false);
@@ -191,8 +314,8 @@ const ResearchChatInterface = () => {
         </div>
 
         <ModelSelector
-          selectedModel={getModelForAgent('research')}
-          onModelSelect={(provider, model) => setModelForAgent('research', provider, model)}
+          selectedModel={getModelForAgent(activeProject?.id || null, 'research')}
+          onModelSelect={(provider, model) => setModelForAgent(activeProject?.id || null, 'research', provider, model)}
           agentColor="from-purple-500 to-purple-600"
         />
       </div>
