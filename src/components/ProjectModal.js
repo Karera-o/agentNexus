@@ -6,7 +6,7 @@ import { useProject, PROJECT_TYPES } from '../context/ProjectContext';
 import { isValidPath, getDefaultStoragePath, selectFolder } from '../utils/fileSystem';
 
 const ProjectModal = () => {
-  const { isProjectModalOpen, toggleProjectModal, createProject, updateProject, activeProject } = useProject();
+  const { isProjectModalOpen, toggleProjectModal, createProject, updateProject, projectToEdit } = useProject();
 
   const [formData, setFormData] = useState({
     name: '',
@@ -21,14 +21,15 @@ const ProjectModal = () => {
 
   // Reset form when modal opens/closes
   useEffect(() => {
-    if (isProjectModalOpen && activeProject && isEditing) {
+    if (isProjectModalOpen && projectToEdit) {
       // Editing existing project
       setFormData({
-        name: activeProject.name || '',
-        description: activeProject.description || '',
-        type: activeProject.type || PROJECT_TYPES.SOFTWARE,
-        storagePath: activeProject.storagePath || ''
+        name: projectToEdit.name || '',
+        description: projectToEdit.description || '',
+        type: projectToEdit.type || PROJECT_TYPES.SOFTWARE,
+        storagePath: projectToEdit.storagePath || ''
       });
+      setIsEditing(true);
     } else {
       // Creating new project
       setFormData({
@@ -40,7 +41,7 @@ const ProjectModal = () => {
       setIsEditing(false);
     }
     setPathError('');
-  }, [isProjectModalOpen, activeProject, isEditing]);
+  }, [isProjectModalOpen, projectToEdit]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -91,8 +92,8 @@ const ProjectModal = () => {
     }
 
     // Create or update project
-    if (isEditing && activeProject) {
-      updateProject(activeProject.id, formData);
+    if (isEditing && projectToEdit) {
+      updateProject(projectToEdit.id, formData);
     } else {
       createProject(formData);
     }

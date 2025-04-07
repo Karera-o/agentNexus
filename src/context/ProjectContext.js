@@ -29,6 +29,7 @@ export const ProjectProvider = ({ children }) => {
   const [projects, setProjects] = useState([]);
   const [activeProject, setActiveProject] = useState(null);
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
+  const [projectToEdit, setProjectToEdit] = useState(null);
 
   // Load projects from file system on initial mount
   useEffect(() => {
@@ -220,7 +221,14 @@ export const ProjectProvider = ({ children }) => {
   };
 
   // Toggle project modal
-  const toggleProjectModal = () => {
+  const toggleProjectModal = (project = null) => {
+    if (!isProjectModalOpen) {
+      // Opening the modal
+      setProjectToEdit(project);
+    } else {
+      // Closing the modal
+      setProjectToEdit(null);
+    }
     setIsProjectModalOpen(!isProjectModalOpen);
   };
 
@@ -234,6 +242,7 @@ export const ProjectProvider = ({ children }) => {
     deleteProject,
     isProjectModalOpen,
     toggleProjectModal,
+    projectToEdit,
     PROJECT_TYPES
   };
 
