@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from 'react';
+import React, { useEffect, use, useState, startTransition } from 'react';
 import ChatInterface from '@/components/ChatInterface';
 import ResearchChatInterface from '@/components/ResearchChatInterface';
 // WelcomeMessage is removed from here as a primary fallback during loading
@@ -8,79 +8,74 @@ import ResearchChatInterface from '@/components/ResearchChatInterface';
 import { useProject, PROJECT_TYPES } from '@/context/ProjectContext';
 import { useRouter } from 'next/navigation';
 
-export default function ProjectAgentPage({ params }) {
+export default function ProjectAgentPage(props) {
+  const resolvedParams = use(props.params);
   const {
     projects,
     activeProject,
     setActiveProject,
     activeAgent,
     setActiveAgent,
+    setActiveProjectAndAgent,
     // PROJECT_TYPES is already available from the import, no need to destructure if not modifying it
   } = useProject();
   
   const router = useRouter();
-  const { projectType, projectId, agentId } = params;
+  const { projectType, projectId, agentId } = resolvedParams;
+  const [isInitializing, setIsInitializing] = useState(true);
 
   useEffect(() => {
     // If projects are not loaded yet from context, wait for them.
-    // The effect will re-run when `projects` array is populated.
     if (projects.length === 0) {
+      setIsInitializing(true);
       return; 
     }
 
     const projectFromUrl = projects.find(p => p.id === projectId);
 
-    if (projectFromUrl) {
-      if (projectFromUrl.type !== projectType) {
-        console.error("Project type mismatch in URL vs project data. Redirecting to home.");
-        router.push('/');
-        return;
-      }
-      
-      // Set this project as active if it's not already or different
-      if (!activeProject || activeProject.id !== projectId) {
-        setActiveProject(projectFromUrl);
-        return; // Return early to wait for activeProject to be set by context re-render
-      }
-      
-      // Now activeProject should be aligned with projectId (or effect will re-run if setActiveProject was called).
-      // Proceed to set agent.
-      if (agentId && (!activeAgent || activeAgent !== agentId)) {
-        setActiveAgent(agentId);
-        return; // Return early to wait for activeAgent to be set by context re-render
-      }
-
-    } else { // This 'else' corresponds to 'if (projectFromUrl)'
-      // This block is reached if projects ARE loaded (projects.length > 0), but projectId was not found.
+    if (!projectFromUrl) {
+      // Project not found - redirect to home
       console.error("Project ID from URL not found after projects loaded. Redirecting to home.");
       router.push('/');
       return;
     }
-    // If we reach here, all necessary context setting calls in this effect pass have been made.
-    // Subsequent re-renders will confirm their state.
 
-  }, [projectId, agentId, projectType, projects, activeProject, setActiveProject, activeAgent, setActiveAgent, router]);
+    if (projectFromUrl.type !== projectType) {
+      console.error("Project type mismatch in URL vs project data. Redirecting to home.");
+      router.push('/');
+      return;
+    }
+
+    // Check what needs to be updated
+    const needsProjectUpdate = !activeProject || activeProject.id !== projectId;
+    const needsAgentUpdate = !activeAgent || activeAgent !== agentId;
+
+    // Always ensure we have the correct project and agent from URL
+    if (needsProjectUpdate || needsAgentUpdate) {
+      startTransition(() => {
+        if (needsProjectUpdate && needsAgentUpdate) {
+          // Update both at once
+          setActiveProjectAndAgent(projectFromUrl, agentId);
+        } else if (needsProjectUpdate) {
+          setActiveProject(projectFromUrl);
+        } else if (needsAgentUpdate) {
+          setActiveAgent(agentId);
+        }
+        // Mark as still initializing until next render
+        setIsInitializing(true);
+      });
+    } else {
+      // Everything is aligned - we're ready
+      setIsInitializing(false);
+    }
+
+  }, [projectId, agentId, projectType, projects, activeProject, activeAgent, setActiveProject, setActiveAgent, setActiveProjectAndAgent, router]);
 
   // Rendering Logic:
 
-  // 1. If projects list is not yet populated from context, it's too early. Show loading.
-  if (projects.length === 0) {
-    // This indicates the initial fetch for projects in ProjectContext is likely still pending.
-    return <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">Loading project data...</div>;
-  }
-
-  // 2. If activeProject is not set or doesn't match URL's projectId.
-  //    (This implies projects ARE loaded from context, but activeProject isn't aligned yet).
-  if (!activeProject || activeProject.id !== projectId) {
-    // The useEffect is working on setting this.
-    return <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">Verifying project...</div>;
-  }
-
-  // 3. If activeAgent is not set or doesn't match URL's agentId.
-  //    (This implies activeProject IS set and matches, but activeAgent isn't aligned yet).
-  if (!activeAgent || activeAgent !== agentId) {
-    // The useEffect is working on setting this. This was where WelcomeMessage used to flash.
-    return <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">Initializing agent...</div>;
+  // 1. If we're still initializing or projects are not loaded, show loading
+  if (isInitializing || projects.length === 0 || !activeProject || activeProject.id !== projectId || !activeAgent || activeAgent !== agentId) {
+    return <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">Loading agent interface...</div>;
   }
 
   // All checks passed: projects loaded, activeProject matches URL, activeAgent matches URL.

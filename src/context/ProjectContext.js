@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { createDirectory, getDefaultStoragePath } from '../utils/fileSystem';
 
 // Project types
@@ -206,6 +206,13 @@ export const ProjectProvider = ({ children }) => {
     setProjects(updatedProjects);
   };
 
+  // Batch update for project and agent to prevent cascading re-renders
+  const setActiveProjectAndAgent = useCallback((project, agent) => {
+    // React 18+ automatically batches these updates
+    setActiveProject(project);
+    setActiveAgent(agent);
+  }, []);
+
   // Delete a project
   const deleteProject = (id) => {
     const filteredProjects = projects.filter(project => project.id !== id);
@@ -247,6 +254,7 @@ export const ProjectProvider = ({ children }) => {
     PROJECT_TYPES,
     activeAgent,
     setActiveAgent,
+    setActiveProjectAndAgent,
   };
 
   return (

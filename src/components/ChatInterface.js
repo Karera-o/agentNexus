@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo, memo } from 'react';
 import { useProject } from '../context/ProjectContext';
 import { joinPath, saveFile } from '../utils/fileSystem';
 import { FaPaperPlane, FaFileExport, FaFileImport, FaRobot, FaUser, FaEllipsisH, FaSpinner } from 'react-icons/fa';
@@ -25,9 +25,25 @@ const ChatInterface = ({ activeAgent }) => {
   const chatContainerRef = useRef(null);
 
   // Get contexts
-  const { isOllamaAvailable, getModelForAgent, setModelForAgent } = useModelContext();
+  const { isLoading: isModelsLoading, error: modelsError, getModelForAgent, setModelForAgent, isProviderAvailable } = useModelContext();
   const { activeProject } = useProject();
   const { settings } = useSettings();
+
+  // Early return if we don't have both activeAgent and activeProject
+  // This prevents rendering with misaligned context
+  if (!activeAgent || !activeProject) {
+    return (
+      <div className="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-2"></div>
+          <p>Loading chat interface...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Determine if Ollama is available
+  const isOllamaAvailable = isProviderAvailable ? isProviderAvailable('ollama') : false;
 
   // Get agent information - memoized to prevent unnecessary recalculations
   const getAgentInfo = useCallback((agentId) => {
@@ -74,9 +90,9 @@ const ChatInterface = ({ activeAgent }) => {
 
   // Load chat history from localStorage or project storage
   useEffect(() => {
-    if (activeAgent) {
+    if (activeAgent && activeProject) {
       // Create a unique key for this chat history that includes the project ID
-      const historyKey = activeProject ? `chatHistory-${activeProject.id}-${activeAgent}` : `chatHistory-${activeAgent}`;
+      const historyKey = `chatHistory-${activeProject.id}-${activeAgent}`;
 
       const savedMessages = localStorage.getItem(historyKey);
       if (savedMessages) {
@@ -181,42 +197,63 @@ const ChatInterface = ({ activeAgent }) => {
 
   // Check for ongoing generations when the component mounts or when the active project/agent changes
   useEffect(() => {
-    if (!activeProject || !activeAgent) return;
+    if (!activeProject || !activeAgent || messages.length === 0) return;
 
-    // Get ongoing generations for this project-agent combination
-    const generations = getOngoingGenerations(activeProject.id, activeAgent);
-    if (generations.length === 0) return;
+    const generationsFromStorage = getOngoingGenerations(activeProject.id, activeAgent);
+    if (generationsFromStorage.length === 0) return;
 
-    // Update messages with ongoing generations
-    generations.forEach(generation => {
-      if (generation.status === 'generating' || generation.status === 'complete') {
-        // Check if the message already exists in our state
-        const messageExists = messages.some(msg => msg.id === generation.messageId);
+    setMessages(prevMessages => {
+      let newMessagesArray = [...prevMessages];
+      let madeChanges = false;
 
-        if (!messageExists) {
-          // This is a generation from another session, we need to load the full chat history
-          // For now, we'll just update the existing message if it exists
-          console.log('Found ongoing generation from another session:', generation);
-        } else {
-          // Update the existing message with the latest content
-          setMessages(prev => {
-            const updatedMessages = [...prev];
-            const messageIndex = updatedMessages.findIndex(msg => msg.id === generation.messageId);
+      generationsFromStorage.forEach(storedGeneration => {
+        if (storedGeneration.status === 'generating' || storedGeneration.status === 'complete') {
+          const existingMessageIndex = newMessagesArray.findIndex(msg => msg.id === storedGeneration.messageId);
 
-            if (messageIndex !== -1) {
-              updatedMessages[messageIndex] = {
-                ...updatedMessages[messageIndex],
-                content: generation.content,
-                isStreaming: generation.status === 'generating',
-              };
+          if (existingMessageIndex !== -1) {
+            const existingMessage = newMessagesArray[existingMessageIndex];
+            let requiresUpdate = false;
+            const updatedMessageFields = { ...existingMessage }; // Start with current message properties
+
+            // Scenario 1: Stored generation is 'complete'. Update if UI is streaming or content differs.
+            if (storedGeneration.status === 'complete' && 
+                (existingMessage.isStreaming || existingMessage.content !== storedGeneration.content)) {
+              updatedMessageFields.content = storedGeneration.content;
+              updatedMessageFields.isStreaming = false;
+              updatedMessageFields.error = storedGeneration.error || false; // Persist error state if present
+              requiresUpdate = true;
+            }
+            // Scenario 2: Stored generation is 'generating'. Update if UI is not streaming or content differs.
+            else if (storedGeneration.status === 'generating' && 
+                     (!existingMessage.isStreaming || existingMessage.content !== storedGeneration.content)) {
+              updatedMessageFields.content = storedGeneration.content;
+              updatedMessageFields.isStreaming = true;
+              requiresUpdate = true;
+            }
+            // Scenario 3: Stored generation has an error status. Update if UI doesn't show error.
+            else if (storedGeneration.status === 'error' && !existingMessage.error) {
+              updatedMessageFields.content = storedGeneration.content || existingMessage.content; // Use stored content if available
+              updatedMessageFields.isStreaming = false;
+              updatedMessageFields.error = true;
+              requiresUpdate = true;
             }
 
-            return updatedMessages;
-          });
+            if (requiresUpdate) {
+              newMessagesArray[existingMessageIndex] = updatedMessageFields;
+              madeChanges = true;
+            }
+          } else {
+            // Logic for handling generations in storage but not in UI (e.g., from a closed tab) can be added here if needed.
+            // For now, we primarily focus on synchronizing existing UI messages.
+            // console.log('Stored generation not found in current UI messages:', storedGeneration);
+          }
         }
-      }
+      });
+
+      return madeChanges ? newMessagesArray : prevMessages;
     });
-  }, [activeProject, activeAgent, messages]);
+
+  }, [activeProject, activeAgent, messages]); // `messages` is a key dependency to re-evaluate reconciliation
 
   const handleFileSelect = (files) => {
     // If we have a project storage path, save the files there
@@ -461,11 +498,17 @@ const ChatInterface = ({ activeAgent }) => {
         </div>
         <div className="flex items-center gap-3">
           {/* Model selector */}
-          <ModelSelector
-            selectedModel={getModelForAgent(activeProject?.id || null, activeAgent)}
-            onModelSelect={handleModelSelect}
-            agentColor={agentInfo.color}
-          />
+          {isModelsLoading ? (
+            <span className="text-sm text-gray-500 dark:text-gray-400 px-3 py-2">Loading models...</span>
+          ) : modelsError ? (
+            <span className="text-sm text-red-500 dark:text-red-400 px-3 py-2">Error loading models</span>
+          ) : (
+            <ModelSelector
+              selectedModel={getModelForAgent(activeProject?.id || null, activeAgent)}
+              onModelSelect={handleModelSelect}
+              agentColor={agentInfo.color}
+            />
+          )}
 
           <div className="flex gap-2">
             <button className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" title="Export conversation">
@@ -638,4 +681,4 @@ const ChatInterface = ({ activeAgent }) => {
   );
 };
 
-export default ChatInterface;
+export default memo(ChatInterface);

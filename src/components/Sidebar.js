@@ -34,7 +34,8 @@ const Sidebar = ({ /* activeAgent and setActiveAgent props no longer directly us
 
   const handleAgentClick = (agentId) => {
     if (activeProject) {
-      setContextActiveAgent(agentId);
+      // Don't update context here - let the page component handle it after navigation
+      // This prevents premature rendering of chat interface
       router.push(`/${activeProject.type}/${activeProject.id}/${agentId}`);
     } else {
       // Handle case where no project is active - perhaps navigate to home or show a message
@@ -200,9 +201,12 @@ const Sidebar = ({ /* activeAgent and setActiveAgent props no longer directly us
                     <div className="space-y-1">
                       {softwareProjects.map(project => (
                         <div key={project.id} className="relative group project-menu-container">
-                          <button
+                          <div
                             onClick={() => handleProjectClick(project)}
-                            className={`w-full text-left px-2 py-1.5 rounded-md flex items-center justify-between transition-all duration-200 text-xs
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleProjectClick(project); }}
+                            className={`w-full text-left px-2 py-1.5 rounded-md flex items-center justify-between transition-all duration-200 text-xs cursor-pointer
                               ${activeProject?.id === project.id
                                 ? `bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white border-l-2 border-primary`
                                 : 'hover:bg-gray-50 dark:hover:bg-gray-800/50 text-gray-700 dark:text-gray-300'
@@ -216,11 +220,12 @@ const Sidebar = ({ /* activeAgent and setActiveAgent props no longer directly us
                             </div>
                             <button
                               onClick={(e) => toggleProjectMenu(project.id, e)}
+                              aria-label="Project actions"
                               className="opacity-0 group-hover:opacity-100 focus:opacity-100 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-opacity"
                             >
                               <FaEllipsisV size={10} />
                             </button>
-                          </button>
+                          </div>
 
                           {/* Project actions menu */}
                           {projectMenuOpen === project.id && (
@@ -257,9 +262,12 @@ const Sidebar = ({ /* activeAgent and setActiveAgent props no longer directly us
                     <div className="space-y-1">
                       {researchProjects.map(project => (
                         <div key={project.id} className="relative group project-menu-container">
-                          <button
+                          <div
                             onClick={() => handleProjectClick(project)}
-                            className={`w-full text-left px-2 py-1.5 rounded-md flex items-center justify-between transition-all duration-200 text-xs
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleProjectClick(project); }}
+                            className={`w-full text-left px-2 py-1.5 rounded-md flex items-center justify-between transition-all duration-200 text-xs cursor-pointer
                               ${activeProject?.id === project.id
                                 ? `bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white border-l-2 border-secondary`
                                 : 'hover:bg-gray-50 dark:hover:bg-gray-800/50 text-gray-700 dark:text-gray-300'
@@ -273,11 +281,12 @@ const Sidebar = ({ /* activeAgent and setActiveAgent props no longer directly us
                             </div>
                             <button
                               onClick={(e) => toggleProjectMenu(project.id, e)}
+                              aria-label="Project actions"
                               className="opacity-0 group-hover:opacity-100 focus:opacity-100 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-opacity"
                             >
                               <FaEllipsisV size={10} />
                             </button>
-                          </button>
+                          </div>
 
                           {/* Project actions menu */}
                           {projectMenuOpen === project.id && (
