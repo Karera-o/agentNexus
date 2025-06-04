@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { FaTimes, FaCode, FaFlask, FaFolder, FaFolderOpen } from 'react-icons/fa';
+import { FaTimes, FaCode, FaFlask, FaFolder, FaFolderOpen, FaBrain, FaCheckCircle } from 'react-icons/fa';
 import { useProject, PROJECT_TYPES } from '../context/ProjectContext';
 import { isValidPath, getDefaultStoragePath, selectFolder } from '../utils/fileSystem';
 
@@ -16,7 +16,6 @@ const ProjectModal = () => {
   });
 
   const [pathError, setPathError] = useState('');
-
   const [isEditing, setIsEditing] = useState(false);
 
   // Reset form when modal opens/closes
@@ -65,12 +64,6 @@ const ProjectModal = () => {
     setFormData(prev => ({ ...prev, type, storagePath: defaultPath }));
   };
 
-  // We no longer need folder selection as we use a predefined structure
-  // This is kept as a placeholder in case we want to re-enable it in the future
-  const handleSelectFolder = async () => {
-    // Do nothing - we use predefined paths now
-  };
-
   const handleSubmit = (e) => {
     e.preventDefault();
 
@@ -104,213 +97,248 @@ const ProjectModal = () => {
   if (!isProjectModalOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md overflow-hidden animate-fade-in-up">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-indigo-500 to-purple-600 p-4 text-white flex justify-between items-center">
-          <h2 className="text-xl font-semibold">{isEditing ? 'Edit Project' : 'Create New Project'}</h2>
-          <button
-            onClick={toggleProjectModal}
-            className="text-white hover:text-gray-200 transition-colors"
-          >
-            <FaTimes />
-          </button>
-        </div>
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-          {/* Project Name */}
-          <div>
-            <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Project Name
-            </label>
-            <input
-              type="text"
-              id="name"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              placeholder="Enter project name"
-              className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              required
-            />
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Improved backdrop with blur effect */}
+      <div 
+        className="absolute inset-0 bg-gray-900/50 dark:bg-gray-900/70 backdrop-blur-sm animate-fade-in"
+        onClick={toggleProjectModal}
+      />
+      
+      {/* Modal container with enhanced styling */}
+      <div className="relative w-full max-w-2xl mx-auto animate-fade-in-up">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+          
+          {/* Header with app branding */}
+          <div className="relative bg-gradient-to-r from-primary to-primary-dark p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="bg-white/20 p-2 rounded-lg">
+                  <FaBrain className="text-white text-xl" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-semibold text-white">
+                    {isEditing ? 'Edit Project' : 'Create New Project'}
+                  </h2>
+                  <p className="text-white/80 text-sm">
+                    {isEditing ? 'Update your project settings' : 'Set up your AI-powered workspace'}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={toggleProjectModal}
+                className="text-white/80 hover:text-white hover:bg-white/10 p-2 rounded-lg transition-all duration-200"
+              >
+                <FaTimes className="text-lg" />
+              </button>
+            </div>
           </div>
 
-          {/* Project Description */}
-          <div>
-            <label htmlFor="description" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Description (Optional)
-            </label>
-            <textarea
-              id="description"
-              name="description"
-              value={formData.description}
-              onChange={handleChange}
-              placeholder="Enter project description"
-              rows="3"
-              className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-            />
-          </div>
-
-          {/* Storage Path - Read-only display */}
-          <div>
-            <label htmlFor="storagePath" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Storage Location
-              <span className="ml-1 text-xs text-gray-500 dark:text-gray-400">
-                (Where project files and chat history will be stored)
-              </span>
-            </label>
-            <div className="flex">
+          {/* Form content */}
+          <form onSubmit={handleSubmit} className="p-6 space-y-6">
+            
+            {/* Project Name */}
+            <div className="space-y-2">
+              <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Project Name
+              </label>
               <input
                 type="text"
-                id="storagePath"
-                name="storagePath"
-                value={formData.storagePath}
-                readOnly
-                className="flex-1 p-2 border rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600"
+                id="name"
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                placeholder="Enter your project name"
+                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary dark:focus:border-primary transition-all duration-200"
+                required
               />
             </div>
-            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-              All project files and chat history will be saved in this location.
-            </p>
-          </div>
 
-          {/* Project Type */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-              Project Type
-            </label>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Project Description */}
+            <div className="space-y-2">
+              <label htmlFor="description" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Description <span className="text-gray-400 font-normal">(Optional)</span>
+              </label>
+              <textarea
+                id="description"
+                name="description"
+                value={formData.description}
+                onChange={handleChange}
+                placeholder="Describe your project goals and objectives"
+                rows="3"
+                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-primary/20 focus:border-primary dark:focus:border-primary transition-all duration-200 resize-none"
+              />
+            </div>
+
+            {/* Storage Location */}
+            <div className="space-y-2">
+              <label htmlFor="storagePath" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Storage Location
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  id="storagePath"
+                  name="storagePath"
+                  value={formData.storagePath}
+                  readOnly
+                  className="w-full px-4 py-3 pr-12 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 text-sm"
+                />
+                <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                  <FaFolder className="text-gray-400 text-sm" />
+                </div>
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                All project files and chat history will be automatically organized here
+              </p>
+            </div>
+
+            {/* Project Type Selection */}
+            <div className="space-y-4">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Choose Project Type
+              </label>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                
+                {/* Software Project Card */}
+                <button
+                  type="button"
+                  onClick={() => handleTypeSelect(PROJECT_TYPES.SOFTWARE)}
+                  className={`relative group p-6 rounded-xl border-2 transition-all duration-300 text-left ${
+                    formData.type === PROJECT_TYPES.SOFTWARE
+                      ? 'border-primary bg-primary/5 dark:bg-primary/10 ring-2 ring-primary/20'
+                      : 'border-gray-200 dark:border-gray-700 hover:border-primary/30 dark:hover:border-primary/50 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                  }`}
+                >
+                  {/* Selection indicator */}
+                  {formData.type === PROJECT_TYPES.SOFTWARE && (
+                    <div className="absolute top-4 right-4">
+                      <FaCheckCircle className="text-primary text-lg" />
+                    </div>
+                  )}
+                  
+                  <div className="flex items-center gap-4 mb-4">
+                    <div className={`p-3 rounded-lg transition-all duration-300 ${
+                      formData.type === PROJECT_TYPES.SOFTWARE
+                        ? 'bg-primary text-white shadow-lg'
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 group-hover:bg-primary/10 group-hover:text-primary'
+                    }`}>
+                      <FaCode className="text-xl" />
+                    </div>
+                    <div>
+                      <h3 className={`font-semibold ${
+                        formData.type === PROJECT_TYPES.SOFTWARE
+                          ? 'text-primary dark:text-primary-light'
+                          : 'text-gray-800 dark:text-gray-200'
+                      }`}>
+                        Software Project
+                      </h3>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        Full development suite
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Agent list */}
+                  <div className="space-y-2">
+                    {[
+                      'Requirements Analyst',
+                      'Software Documentor', 
+                      'System Designer',
+                      'DB Designer',
+                      'UI Architect'
+                    ].map((agent, index) => (
+                      <div key={agent} className="flex items-center gap-2">
+                        <div className={`w-1.5 h-1.5 rounded-full ${
+                          formData.type === PROJECT_TYPES.SOFTWARE ? 'bg-primary' : 'bg-gray-400'
+                        }`} />
+                        <span className="text-xs text-gray-600 dark:text-gray-400">
+                          {agent}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </button>
+
+                {/* Research Project Card */}
+                <button
+                  type="button"
+                  onClick={() => handleTypeSelect(PROJECT_TYPES.RESEARCH)}
+                  className={`relative group p-6 rounded-xl border-2 transition-all duration-300 text-left ${
+                    formData.type === PROJECT_TYPES.RESEARCH
+                      ? 'border-secondary bg-secondary/5 dark:bg-secondary/10 ring-2 ring-secondary/20'
+                      : 'border-gray-200 dark:border-gray-700 hover:border-secondary/30 dark:hover:border-secondary/50 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                  }`}
+                >
+                  {/* Selection indicator */}
+                  {formData.type === PROJECT_TYPES.RESEARCH && (
+                    <div className="absolute top-4 right-4">
+                      <FaCheckCircle className="text-secondary text-lg" />
+                    </div>
+                  )}
+                  
+                  <div className="flex items-center gap-4 mb-4">
+                    <div className={`p-3 rounded-lg transition-all duration-300 ${
+                      formData.type === PROJECT_TYPES.RESEARCH
+                        ? 'bg-secondary text-white shadow-lg'
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 group-hover:bg-secondary/10 group-hover:text-secondary'
+                    }`}>
+                      <FaFlask className="text-xl" />
+                    </div>
+                    <div>
+                      <h3 className={`font-semibold ${
+                        formData.type === PROJECT_TYPES.RESEARCH
+                          ? 'text-secondary dark:text-secondary-light'
+                          : 'text-gray-800 dark:text-gray-200'
+                      }`}>
+                        Research Project
+                      </h3>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        Academic & research focus
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Features list */}
+                  <div className="space-y-2">
+                    {[
+                      'Research Assistant',
+                      'Paper Analysis',
+                      'Literature Review', 
+                      'Document Upload'
+                    ].map((feature, index) => (
+                      <div key={feature} className="flex items-center gap-2">
+                        <div className={`w-1.5 h-1.5 rounded-full ${
+                          formData.type === PROJECT_TYPES.RESEARCH ? 'bg-secondary' : 'bg-gray-400'
+                        }`} />
+                        <span className="text-xs text-gray-600 dark:text-gray-400">
+                          {feature}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            {/* Submit Button */}
+            <div className="flex gap-3 pt-4">
               <button
                 type="button"
-                onClick={() => handleTypeSelect(PROJECT_TYPES.SOFTWARE)}
-                className={`flex flex-col items-center justify-center p-4 rounded-lg border-2 transition-all ${
-                  formData.type === PROJECT_TYPES.SOFTWARE
-                    ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30'
-                    : 'border-gray-300 dark:border-gray-600 hover:border-indigo-300 dark:hover:border-indigo-700'
-                }`}
+                onClick={toggleProjectModal}
+                className="flex-1 px-6 py-3 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200 font-medium"
               >
-                <div className={`p-3 rounded-full mb-2 ${
-                  formData.type === PROJECT_TYPES.SOFTWARE
-                    ? 'bg-indigo-500 text-white'
-                    : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-                }`}>
-                  <FaCode className="text-xl" />
-                </div>
-                <span className={`font-medium ${
-                  formData.type === PROJECT_TYPES.SOFTWARE
-                    ? 'text-indigo-700 dark:text-indigo-300'
-                    : 'text-gray-700 dark:text-gray-300'
-                }`}>
-                  Software Project
-                </span>
-                <span className="text-xs text-gray-500 dark:text-gray-400 mt-1 text-center">
-                  Full agent suite for software development
-                </span>
-
-                {/* Features list */}
-                <ul className="mt-3 text-xs text-left w-full space-y-1 text-gray-600 dark:text-gray-400">
-                  <li className="flex items-center">
-                    <svg className="w-3 h-3 mr-1.5 text-indigo-500 dark:text-indigo-400" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"></path>
-                    </svg>
-                    Requirements Analyst
-                  </li>
-                  <li className="flex items-center">
-                    <svg className="w-3 h-3 mr-1.5 text-indigo-500 dark:text-indigo-400" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"></path>
-                    </svg>
-                    Software Documentor
-                  </li>
-                  <li className="flex items-center">
-                    <svg className="w-3 h-3 mr-1.5 text-indigo-500 dark:text-indigo-400" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"></path>
-                    </svg>
-                    System Designer
-                  </li>
-                  <li className="flex items-center">
-                    <svg className="w-3 h-3 mr-1.5 text-indigo-500 dark:text-indigo-400" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"></path>
-                    </svg>
-                    DB Designer
-                  </li>
-                  <li className="flex items-center">
-                    <svg className="w-3 h-3 mr-1.5 text-indigo-500 dark:text-indigo-400" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"></path>
-                    </svg>
-                    UI Architect
-                  </li>
-                </ul>
+                Cancel
               </button>
-
               <button
-                type="button"
-                onClick={() => handleTypeSelect(PROJECT_TYPES.RESEARCH)}
-                className={`flex flex-col items-center justify-center p-4 rounded-lg border-2 transition-all ${
-                  formData.type === PROJECT_TYPES.RESEARCH
-                    ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/30'
-                    : 'border-gray-300 dark:border-gray-600 hover:border-purple-300 dark:hover:border-purple-700'
-                }`}
+                type="submit"
+                className="flex-1 px-6 py-3 bg-gradient-to-r from-primary to-primary-dark text-white rounded-lg hover:from-primary-dark hover:to-primary shadow-lg hover:shadow-xl transition-all duration-200 font-medium"
               >
-                <div className={`p-3 rounded-full mb-2 ${
-                  formData.type === PROJECT_TYPES.RESEARCH
-                    ? 'bg-purple-500 text-white'
-                    : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-                }`}>
-                  <FaFlask className="text-xl" />
-                </div>
-                <span className={`font-medium ${
-                  formData.type === PROJECT_TYPES.RESEARCH
-                    ? 'text-purple-700 dark:text-purple-300'
-                    : 'text-gray-700 dark:text-gray-300'
-                }`}>
-                  Research Project
-                </span>
-                <span className="text-xs text-gray-500 dark:text-gray-400 mt-1 text-center">
-                  Specialized assistant for research tasks
-                </span>
-
-                {/* Features list */}
-                <ul className="mt-3 text-xs text-left w-full space-y-1 text-gray-600 dark:text-gray-400">
-                  <li className="flex items-center">
-                    <svg className="w-3 h-3 mr-1.5 text-purple-500 dark:text-purple-400" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"></path>
-                    </svg>
-                    Research Assistant
-                  </li>
-                  <li className="flex items-center">
-                    <svg className="w-3 h-3 mr-1.5 text-purple-500 dark:text-purple-400" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"></path>
-                    </svg>
-                    Paper Analysis
-                  </li>
-                  <li className="flex items-center">
-                    <svg className="w-3 h-3 mr-1.5 text-purple-500 dark:text-purple-400" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"></path>
-                    </svg>
-                    Literature Review
-                  </li>
-                  <li className="flex items-center">
-                    <svg className="w-3 h-3 mr-1.5 text-purple-500 dark:text-purple-400" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"></path>
-                    </svg>
-                    Document Upload
-                  </li>
-                </ul>
+                {isEditing ? 'Update Project' : 'Create Project'}
               </button>
             </div>
-          </div>
-
-          {/* Submit Button */}
-          <div className="pt-2">
-            <button
-              type="submit"
-              className="w-full py-2 px-4 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-lg hover:from-indigo-600 hover:to-purple-700 transition-all shadow-md"
-            >
-              {isEditing ? 'Update Project' : 'Create Project'}
-            </button>
-          </div>
-        </form>
+          </form>
+        </div>
       </div>
     </div>
   );
