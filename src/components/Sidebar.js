@@ -3,13 +3,15 @@
 import React, { useState, useEffect } from 'react';
 import { FaRobot, FaFileAlt, FaDatabase, FaCode, FaPaintBrush, FaPlus, FaBrain, FaFlask, FaFolder, FaEllipsisH, FaEdit, FaTrash, FaEllipsisV, FaTimes } from 'react-icons/fa';
 import { useProject, PROJECT_TYPES } from '../context/ProjectContext';
+import { useRouter } from 'next/navigation';
 
-const Sidebar = ({ activeAgent, setActiveAgent }) => {
-  const { projects, activeProject, setActiveProject, toggleProjectModal, deleteProject } = useProject();
+const Sidebar = ({ /* activeAgent and setActiveAgent props no longer directly used for navigation trigger */ }) => {
+  const { projects, activeProject, setActiveProject, toggleProjectModal, deleteProject, activeAgent, setActiveAgent: setContextActiveAgent } = useProject();
+  const router = useRouter();
 
   // State for project actions menu
   const [projectMenuOpen, setProjectMenuOpen] = useState(null);
-  const [projectToEdit, setProjectToEdit] = useState(null);
+  // State for delete confirmation modal
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [projectToDelete, setProjectToDelete] = useState(null);
 
@@ -27,8 +29,32 @@ const Sidebar = ({ activeAgent, setActiveAgent }) => {
     { id: 'research', name: 'Research Assistant', icon: <FaFlask />, color: 'from-purple-500 to-purple-600' },
   ];
 
-  // Determine which agents to show based on project type
-  const agents = activeProject?.type === PROJECT_TYPES.RESEARCH ? researchAgents : softwareAgents;
+  // Determine which agents to show based on project type from context
+  const currentAgentsList = activeProject?.type === PROJECT_TYPES.RESEARCH ? researchAgents : softwareAgents;
+
+  const handleAgentClick = (agentId) => {
+    if (activeProject) {
+      router.push(`/${activeProject.type}/${activeProject.id}/${agentId}`);
+    } else {
+      // Handle case where no project is active - perhaps navigate to home or show a message
+      console.warn("No active project selected to associate with the agent. Please select a project first.");
+      // Optionally, could set this agent as a pending selection and then prompt for project
+    }
+  };
+
+  const handleProjectClick = (project) => {
+    const defaultAgent = project.type === PROJECT_TYPES.RESEARCH 
+      ? researchAgents[0] 
+      : softwareAgents[0];
+    
+    if (defaultAgent) {
+      router.push(`/${project.type}/${project.id}/${defaultAgent.id}`);
+    } else {
+      console.error("No default agent found for project type:", project.type);
+      // Fallback: navigate to project page without agent, if such a page exists
+      // router.push(`/${project.type}/${project.id}`); 
+    }
+  };
 
   // Handle project menu toggle
   const toggleProjectMenu = (projectId, e) => {
@@ -54,8 +80,15 @@ const Sidebar = ({ activeAgent, setActiveAgent }) => {
   // Handle actual project deletion
   const confirmDeleteProject = () => {
     if (projectToDelete) {
+      const projectWasActive = activeProject && activeProject.id === projectToDelete.id;
       deleteProject(projectToDelete.id);
       setShowDeleteConfirm(false);
+      
+      if (projectWasActive) {
+        // If the active project was deleted, navigate to the root or a default page
+        // as there's no longer a valid project context for the current URL.
+        router.push('/'); 
+      }
       setProjectToDelete(null);
     }
   };
@@ -120,10 +153,10 @@ const Sidebar = ({ activeAgent, setActiveAgent }) => {
       <div className="flex-1 overflow-y-auto p-3">
         <h2 className="text-gray-500 dark:text-gray-400 text-xs font-medium mb-2 ml-1">Agents</h2>
         <ul className="space-y-1">
-          {agents.map((agent) => (
-            <li key={agent.id} className="animate-fade-in" style={{animationDelay: `${agents.indexOf(agent) * 0.05}s`}}>
+          {currentAgentsList.map((agent) => (
+            <li key={agent.id} className="animate-fade-in" style={{animationDelay: `${currentAgentsList.indexOf(agent) * 0.05}s`}}>
               <button
-                onClick={() => setActiveAgent(agent.id)}
+                onClick={() => handleAgentClick(agent.id)}
                 className={`w-full text-left px-3 py-2 rounded-md flex items-center transition-all duration-200 ${activeAgent === agent.id
                   ? `bg-primary/10 text-primary dark:text-primary-light border-l-2 border-primary`
                   : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300'
@@ -167,7 +200,7 @@ const Sidebar = ({ activeAgent, setActiveAgent }) => {
                       {softwareProjects.map(project => (
                         <div key={project.id} className="relative group project-menu-container">
                           <button
-                            onClick={() => setActiveProject(project)}
+                            onClick={() => handleProjectClick(project)}
                             className={`w-full text-left px-2 py-1.5 rounded-md flex items-center justify-between transition-all duration-200 text-xs
                               ${activeProject?.id === project.id
                                 ? `bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white border-l-2 border-primary`
@@ -224,7 +257,7 @@ const Sidebar = ({ activeAgent, setActiveAgent }) => {
                       {researchProjects.map(project => (
                         <div key={project.id} className="relative group project-menu-container">
                           <button
-                            onClick={() => setActiveProject(project)}
+                            onClick={() => handleProjectClick(project)}
                             className={`w-full text-left px-2 py-1.5 rounded-md flex items-center justify-between transition-all duration-200 text-xs
                               ${activeProject?.id === project.id
                                 ? `bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white border-l-2 border-secondary`
@@ -283,7 +316,7 @@ const Sidebar = ({ activeAgent, setActiveAgent }) => {
 
         {/* New project button */}
         <button
-          onClick={toggleProjectModal}
+          onClick={() => toggleProjectModal()}
           className="w-full text-left px-3 py-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 flex items-center transition-all duration-200 group mt-2"
         >
           <div className="mr-2 p-1.5 rounded-md bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400">

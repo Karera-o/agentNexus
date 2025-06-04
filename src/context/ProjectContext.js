@@ -30,6 +30,7 @@ export const ProjectProvider = ({ children }) => {
   const [activeProject, setActiveProject] = useState(null);
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [projectToEdit, setProjectToEdit] = useState(null);
+  const [activeAgent, setActiveAgent] = useState(null);
 
   // Load projects from file system on initial mount
   useEffect(() => {
@@ -243,7 +244,9 @@ export const ProjectProvider = ({ children }) => {
     isProjectModalOpen,
     toggleProjectModal,
     projectToEdit,
-    PROJECT_TYPES
+    PROJECT_TYPES,
+    activeAgent,
+    setActiveAgent,
   };
 
   return (
