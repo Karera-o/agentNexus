@@ -34,6 +34,7 @@ const Sidebar = ({ /* activeAgent and setActiveAgent props no longer directly us
 
   const handleAgentClick = (agentId) => {
     if (activeProject) {
+      setContextActiveAgent(agentId);
       router.push(`/${activeProject.type}/${activeProject.id}/${agentId}`);
     } else {
       // Handle case where no project is active - perhaps navigate to home or show a message
